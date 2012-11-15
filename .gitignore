@@ -10,5 +10,5 @@ bin/
 .project
 .svn
 .flexLibProperties
-
+*.air
 /libs
