@@ -14,7 +14,7 @@
 			import air.update.ApplicationUpdaterUI;
 			import air.update.events.StatusUpdateEvent;
 			import air.update.events.UpdateEvent; 
-			
+			 
 			import events.DelEvent;
 			
 			import flash.utils.setTimeout;
