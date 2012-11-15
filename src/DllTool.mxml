@@ -8,7 +8,7 @@
 					   nativeDragEnter="windowedapplication1_nativeDragEnterHandler(event)"
 					   showStatusBar="false">
 	<fx:Style source="style.css"/>
-	<fx:Script>
+	<fx:Script> 
 		<![CDATA[
 			import air.update.ApplicationUpdater; 
 			import air.update.ApplicationUpdaterUI;
