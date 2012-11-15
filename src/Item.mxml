@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:GridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" clipAndEnableScrolling="true">
+	
+	<fx:Script>
+		<![CDATA[
+			override public function prepare(hasBeenRecycled:Boolean):void 
+			{
+				if(!data)
+				{
+					lblData.text = "";
+					rect.visible = false;
+					return;
+				}
+				lblData.text = data[column.dataField];
+				if(column.dataField=="name")
+				{
+					rect.visible = data.nameRepeat!=null;
+					lblData.toolTip = rect.visible?array2String(data.nameRepeat):null;
+				}
+				else
+				{
+					rect.visible = data.subkeyRepeat!=null;
+					lblData.toolTip = rect.visible?array2String(data.subkeyRepeat):null;
+				}
+			}
+			private function array2String(arr:Array):String
+			{
+				var isFirst:Boolean = true;
+				var returnStr:String = "";
+				for each(var str:String in arr)
+				{
+					if(isFirst)
+					{
+						isFirst = false;
+						returnStr = str;
+					}
+					else
+					{
+						returnStr += ","+str;
+					}
+				}
+				return "重复的key:  "+returnStr;
+			}
+		]]>
+	</fx:Script>
+	<s:Rect width="100%" height="100%" id="rect">
+		<s:fill>
+			<s:SolidColor color="0xFF0000"/>
+		</s:fill>
+	</s:Rect>
+	<s:Label id="lblData" top="9" left="7"/>
+	
+</s:GridItemRenderer>

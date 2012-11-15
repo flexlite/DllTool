@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+	<filters-extensions>fla,as,dxml,mxml</filters-extensions><!-- 定义添加文件时要忽略的扩展名列表 -->
+	<types><!-- 定义每种文件类型对应的扩展名列表 -->
+		<type name="swf" extensions="swf"/>
+		<type name="xml" extensions="xml"/>
+		<type name="json" extensions="json"/>
+		<type name="amf" extensions="amf"/>
+		<type name="dxr" extensions="dxr"/>
+		<type name="img" extensions="png,jpg,gif"/>
+		<type name="sound" extensions="mp3"/>
+	</types>
+</config>

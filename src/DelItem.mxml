@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:GridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" clipAndEnableScrolling="true">
+	
+	<fx:Script>
+		<![CDATA[
+			import events.DelEvent;
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				var evt:DelEvent = new DelEvent(DelEvent.DELETE,true);
+				evt.data = data;
+				evt.itemIndex = rowIndex;
+				dispatchEvent(evt);
+			}
+		]]>
+	</fx:Script>
+	
+	<s:Button x="1" verticalCenter="0" y="0" width="24" height="24" skinClass="IconButtonSkin" icon="@Embed('icon/delete.gif')" click="button1_clickHandler(event)"/>
+</s:GridItemRenderer>

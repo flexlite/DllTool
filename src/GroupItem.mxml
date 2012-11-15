@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				rollOver="itemrenderer1_rollOverHandler(event)"
+				autoDrawBackground="false" rollOut="itemrenderer1_rollOutHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import events.DelEvent;
+			
+			import mx.events.FlexEvent;
+			
+			override public function set selected(value:Boolean):void
+			{
+				super.selected = value;
+				btn.selected = value;
+			}
+			
+			protected function btn_creationCompleteHandler(event:FlexEvent):void
+			{
+				btn.selected = selected;
+			}
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				event.stopImmediatePropagation();
+				var evt:DelEvent = new DelEvent(DelEvent.DELETE,true);
+				evt.data = data;
+				evt.itemIndex = itemIndex;
+				dispatchEvent(evt);
+			}
+			
+			protected function button1_mouseDownHandler(event:MouseEvent):void
+			{
+				event.stopImmediatePropagation();
+			}
+			
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+			}
+			
+			protected function itemrenderer1_rollOutHandler(event:MouseEvent):void
+			{
+				delBtn.visible = false;
+			}
+			
+			protected function itemrenderer1_rollOverHandler(event:MouseEvent):void
+			{
+				delBtn.visible = true;
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:ButtonBarButton allowDeselection="false" id="btn" x="0" y="0" width="100%" height="100%" label="{data}"/>
+	<s:Button id="delBtn" visible="false" right="0" width="24" height="24" buttonMode="true" click="button1_clickHandler(event)" 
+			  mouseDown="button1_mouseDownHandler(event)"
+			  icon="@Embed('icon/delete.gif')" mouseChildren="false" skinClass="IconButtonSkin"
+			  useHandCursor="true" verticalCenter="0"/>
+	
+</s:ItemRenderer>
