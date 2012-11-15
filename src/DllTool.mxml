@@ -10,12 +10,12 @@
 	<fx:Style source="style.css"/>
 	<fx:Script> 
 		<![CDATA[
-			import air.update.ApplicationUpdater;  
-			import air.update.ApplicationUpdaterUI; 
+			import air.update.ApplicationUpdater;
+			import air.update.ApplicationUpdaterUI;
 			import air.update.events.StatusUpdateEvent;
-			import air.update.events.UpdateEvent; 
-			 
-			import events.DelEvent; 
+			import air.update.events.UpdateEvent;
+			
+			import events.DelEvent;
 			
 			import flash.utils.setTimeout;
 			
@@ -487,7 +487,6 @@
 			 */
 			protected function exportBtn_clickHandler(event:MouseEvent):void
 			{
-				
 				if(loadGroups.length==0)
 				{
 					return;
@@ -497,6 +496,22 @@
 					Alert.show("无法导出配置！name和subkeys属性中的字符串必须全局唯一。请检查已经标记为红色的区域，消除所有重复的key后重试。","提示");
 					return;
 				}
+				var folder:String = FileUtil.getDirectory(currentConfigPath);
+				FileUtil.browseForSave(function(file:File):void{
+					currentConfigPath = file.nativePath;
+					nativeWindow.title = "DllTool "+currentVersion+" - "+currentConfigPath;
+					SharedObjectUtil.write(FL_DIR,"lastConfig",file.nativePath);
+					if(srcPath.text)
+						SharedObjectUtil.write(FL_DIR,file.nativePath,srcPath.text);
+					FileUtil.save(file.nativePath,getConfigData());
+				},folder+"ini."+type.toLowerCase());
+				replaceSeparator(true);
+			}
+			/**
+			 * 根据导出类型生成当前的配置文件对象
+			 */
+			private function getConfigData():*
+			{
 				replaceSeparator(false);
 				var data:*;
 				var type:String = exportFormat.selectedItem;
@@ -516,16 +531,7 @@
 						data = JSON.stringify(getConfigObject());
 						break;
 				}
-				var folder:String = FileUtil.getDirectory(currentConfigPath);
-				FileUtil.browseForSave(function(file:File):void{
-					currentConfigPath = file.nativePath;
-					nativeWindow.title = "DllTool "+currentVersion+" - "+currentConfigPath;
-					SharedObjectUtil.write(FL_DIR,"lastConfig",file.nativePath);
-					if(srcPath.text)
-						SharedObjectUtil.write(FL_DIR,file.nativePath,srcPath.text);
-					FileUtil.save(file.nativePath,data);
-				},folder+"ini."+type.toLowerCase());
-				replaceSeparator(true);
+				return data;
 			}
 			/**
 			 * 替换url里的斜杠或反斜杠
@@ -1085,8 +1091,106 @@
 				nextSubkeyObject();
 			}
 			
+			/**
+			 * “一键打包”按钮触发
+			 */
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				var resPath:String = srcPath.text;
+				if(!resPath||loadGroups.length==0)
+					return;
+				var exportPath:String = resPath.substr(0,resPath.length-1)+"_EXP"+File.separator;
+				for each(var group:Object in loadGroups)
+				{
+					for each(var data:Object in group.list)
+					{
+						var url:String = resPath+data.url;
+						if(!exists(url))
+							continue;
+						var bytes:ByteArray = FileUtil.openAsByteArray(url);
+						if(isCompressType(data.type))
+							bytes.compress();
+						FileUtil.save(exportPath+data.url,bytes);
+					}
+				}
+			}
 			
+			private var compressType:Array = ["xml","json"];
 			
+			private function isCompressType(type:String):Boolean
+			{
+				for each(var t:String in compressType)
+				{
+					if(t==type)
+						return true;
+				}
+				return false;
+			}
+			
+			/**
+			 * 合并一个资源组
+			 */
+			private function mergeGroups(groups:Array):void
+			{
+				var oldLoadGroup:Array = loadGroups;
+				var bytes:ByteArray = new ByteArray();
+				bytes.writeObject(loadGroups);
+				loadGroups = bytes.readObject();
+				
+				for each(var groupName:String in groups)
+				{
+					var group:Object = getGroupByName(groupName);
+					var langDic:Dictionary = getLanguageList(group.list);
+					for(var lang:String in langDic)
+					{
+						var list:Array = langDic[lang];
+						var g:Object = {};
+					}
+				}
+				
+				loadGroups = oldLoadGroup;
+			}
+			/**
+			 * 根据语言分类
+			 */
+			private function getLanguageList(list:Array):Dictionary
+			{
+				var langDic:Dictionary = new Dictionary();
+				for(var i:int=0;i<list.length;i++)
+				{
+					var data:Object = list[i];
+					if(data.type=="swf"||data.type=="sound")
+						continue;
+					list.splice(i,1);
+					i--;
+					var lang:String = data.language;
+					if(langDic[lang])
+						langDic[lang].push(data);
+					else
+						langDic[lang] = [data];
+				}
+				return langDic;
+			}
+			/**
+			 * 生成一个资源组节点
+			 */
+			private function createGroupItem(list:Array):Object
+			{
+				"name url type language size subkeys";
+				var group:Object = {type:"group",language:list[0].language};
+				var size:Number = 0;
+				var subkeys:Array = [];
+				for each(var item:Object in list)
+				{
+					size += Number(item.size);
+					if(item.subkeys)
+						subkeys.push(item.subkeys);
+				}
+				group.size = size.toString();
+				group.subkeys = subkeys.join(",");
+				var url:String = FileUtil.getDirectory(list[0].url)+"GROUP__";
+				return group;
+			}
 		]]>
 	</fx:Script>
 	<fx:Declarations>
@@ -1108,13 +1212,13 @@
 			</s:ArrayList>
 		</s:columns>
 	</s:DataGrid>
-	<s:Button id="browseBtn" x="285" y="5" width="44" label="浏览"
+	<s:Button id="browseBtn" x="236" y="5" width="44" label="浏览"
 			  click="browseBtn_clickHandler(event)"/>
 	<s:Label x="5" y="10" text="URL相对路径:"/>
-	<s:TextInput id="srcPath" x="81" y="4" width="201" editable="false"/>
+	<s:TextInput id="srcPath" x="81" y="4" width="151" editable="false"/>
 	<s:Button id="exportBtn" y="5" right="5" width="44" label="导出"
 			  click="exportBtn_clickHandler(event)"/>
-	<s:Button id="addDirBtn" x="333" y="5" label="添加路径" click="addDirBtn_clickHandler(event)"
+	<s:Button id="addDirBtn" x="284" y="5" label="添加路径" click="addDirBtn_clickHandler(event)"
 			  toolTip="可直接拖拽到窗口添加"/>
 	<s:DropDownList id="exportFormat" y="5" right="53" width="70" selectedIndex="0">
 		<s:ArrayCollection>
@@ -1127,12 +1231,12 @@
 	</s:DropDownList>
 	<s:Label y="10" right="123" text="导出配置:"/>
 	<s:Button id="importBtn" y="5" right="177" label="打开配置" click="importBtn_clickHandler(event)"/>
-	<s:Button id="refresBtn" y="5" left="553" label="刷新" toolTip="重新读取subkey" click="refresBtn_clickHandler(event)"/>
-	<s:Button id="removeRepeatBtn" x="480" y="5" label="清理DXR"
+	<s:Button id="refresBtn" y="5" left="504" label="刷新" toolTip="重新读取subkey" click="refresBtn_clickHandler(event)"/>
+	<s:Button id="removeRepeatBtn" x="431" y="5" label="清理DXR"
 			  click="removeRepeatBtn_clickHandler(event)" toolTip="移除重复的subkey"/>
-	<s:Button id="cleanBtn" y="5" left="626" label="清空" click="cleanBtn_clickHandler(event)"/>
+	<s:Button id="cleanBtn" y="5" left="577" label="清空" click="cleanBtn_clickHandler(event)"/>
 	
-	<s:Button id="addFileBtn"  click="addFileBtn_clickHandler(event)" x="407" y="5" label="添加文件" toolTip="可直接拖拽到窗口添加"/>
+	<s:Button id="addFileBtn"  click="addFileBtn_clickHandler(event)" x="358" y="5" label="添加文件" toolTip="可直接拖拽到窗口添加"/>
 	<s:Scroller x="0" top="31" bottom="0" width="120">
 		<s:VGroup maxWidth="120" gap="-1" horizontalAlign="center">
 			<s:List id="groupTab" x="0" y="31" width="100%" borderVisible="false" click="groupTab_changeHandler()"
@@ -1151,4 +1255,5 @@
 			</s:Group>
 		</s:VGroup>
 	</s:Scroller>
+	<s:Button y="5" right="250" toolTip="将配置和资源打包发布" label="一键打包" click="button1_clickHandler(event)"/>
 </s:WindowedApplication>
