@@ -11,7 +11,7 @@
 	<fx:Script> 
 		<![CDATA[
 			import air.update.ApplicationUpdater; 
-			import air.update.ApplicationUpdaterUI;
+			import air.update.ApplicationUpdaterUI; 
 			import air.update.events.StatusUpdateEvent;
 			import air.update.events.UpdateEvent; 
 			 
