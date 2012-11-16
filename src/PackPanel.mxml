@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" close="titlewindow1_closeHandler(event)"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="titlewindow1_creationCompleteHandler(event)"
+			   width="470" height="342" textAlign="center" title="发布资源">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			
+			import org.flexlite.domUtils.FileUtil;
+			import org.flexlite.domUtils.SharedObjectUtil;
+			[Bindable]
+			private var groupDp:ArrayCollection = new ArrayCollection();
+			
+			[Bindable]
+			private var typeDp:ArrayCollection = new ArrayCollection();
+			
+			[Bindable]
+			private var excludeDp:ArrayCollection = new ArrayCollection();
+			
+			private const FL_DIR:String = "FLEXLITE";
+			
+			protected function titlewindow1_creationCompleteHandler(event:FlexEvent):void
+			{
+				packedResPath.text = SharedObjectUtil.read(FL_DIR,"packedResPath");
+				packedConfigPath.text = SharedObjectUtil.read(FL_DIR,"packedConfigPath");
+				copyAllBtn.selected = SharedObjectUtil.read(FL_DIR,"packedCopyAll");
+			}
+			
+			public function setData(groups:Array,types:Array):void
+			{
+				var packedGroups:Array = SharedObjectUtil.read(FL_DIR,"packedGroups");
+				if(!packedGroups)
+					packedGroups = [];
+				var packedTypes:Array = SharedObjectUtil.read(FL_DIR,"packedTypes");
+				if(!packedTypes)
+					packedTypes = ["xml","json"];
+				var excludeTypes:Array = SharedObjectUtil.read(FL_DIR,"excludeTypes");
+				if(!excludeTypes)
+					excludeTypes = ["swf","sound"];
+				groupDp.removeAll();
+				for each(var name:String in groups)
+				{
+					groupDp.addItem({label:name,selected:packedGroups.indexOf(name)!=-1});
+				}
+				groupDp.source.sortOn("label");
+				groupDp.refresh();
+				typeDp.removeAll();
+				for each(var type:String in types)
+				{
+					typeDp.addItem({label:type,selected:packedTypes.indexOf(type)!=-1});
+				}
+				typeDp.source.sortOn("label");
+				typeDp.refresh();
+				excludeDp.removeAll();
+				for each(type in types)
+				{
+					excludeDp.addItem({label:type,selected:excludeTypes.indexOf(type)!=-1});
+				}
+				excludeDp.source.sortOn("label");
+				excludeDp.refresh();
+			}
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				if(packedResPath.text=="")
+				{
+					Alert.show("请先选择资源发布路径！");
+					return;
+				}
+				else if(packedConfigPath.text=="")
+				{
+					Alert.show("请先选择配置文件路径！");
+					return;
+				}
+				var packedGroup:Array = [];
+				for each(var g:Object in groupDp)
+				{
+					if(g.selected)
+						packedGroup.push(g.label);
+				}
+				var packedType:Array = [];
+				for each(var type:Object in typeDp)
+				{
+					if(type.selected)
+						packedType.push(type.label);
+				}
+				var excludeType:Array = [];
+				for each(type in excludeDp)
+				{
+					if(type.selected)
+						excludeType.push(type.label);
+				}
+				SharedObjectUtil.write(FL_DIR,"packedGroups",packedGroup);
+				SharedObjectUtil.write(FL_DIR,"packedTypes",packedType);
+				SharedObjectUtil.write(FL_DIR,"excludeTypes",excludeType);
+				SharedObjectUtil.write(FL_DIR,"packedResPath",packedResPath.text);
+				SharedObjectUtil.write(FL_DIR,"packedConfigPath",packedConfigPath.text);
+				SharedObjectUtil.write(FL_DIR,"packedCopyAll",copyAllBtn.selected);
+				PopUpManager.removePopUp(this);
+				dispatchEvent(new Event("startPack"));
+			}
+			
+			protected function button2_clickHandler(event:MouseEvent):void
+			{
+				FileUtil.browseForOpen(function(file:File):void{
+					packedResPath.text = file.nativePath+File.separator;
+				},3);
+			}
+			
+			protected function button3_clickHandler(event:MouseEvent):void
+			{
+				FileUtil.browseForSave(function(file:File):void{
+					packedConfigPath.text = file.nativePath;
+				});
+			}
+			
+			protected function titlewindow1_closeHandler(event:CloseEvent):void
+			{
+				PopUpManager.removePopUp(this);
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:Button x="411" y="30" width="49" label="浏览" click="button2_clickHandler(event)"/>
+	<s:Button x="411" y="89" width="49" label="浏览" click="button3_clickHandler(event)"/>
+	<s:TextInput id="packedConfigPath" x="93" y="88" width="312" textAlign="left"/>
+	<s:Label x="10" y="94" text="配置文件路径:"/>
+	<s:TextInput id="packedResPath" x="93" y="29" width="312" textAlign="left"/>
+	<s:Label x="10" y="35" text="资源发布路径:"/>
+	<s:CheckBox id="copyAllBtn" x="93" y="54" label="复制所有资源" selected="true"
+				toolTip="从源目录复制所有文件到发布路径，即使该文件不在配置中"/>
+	<s:List x="174" y="136" width="120" height="105" borderVisible="true" dataProvider="{groupDp}"
+			itemRenderer="PackItem" textAlign="left"></s:List>
+	<s:List x="42" y="136" width="120" height="105" borderVisible="true" dataProvider="{typeDp}"
+			itemRenderer="PackItem" textAlign="left"></s:List>
+	<s:Label x="203" y="119" text="要合并的组"/>
+	<s:List x="304" y="136" width="120" height="105" borderVisible="true" dataProvider="{excludeDp}"
+			itemRenderer="PackItem" textAlign="left"></s:List>
+	<s:Label x="316" y="119" text="合并时排除的文件"/>
+	<s:Label x="54" y="119" text="要压缩的文件类型"/>
+	<s:Button x="187" y="262" width="94" height="28" label="立即发布" click="button1_clickHandler(event)"
+			  fontSize="14"/>
+</s:TitleWindow>

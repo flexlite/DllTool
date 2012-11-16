@@ -2,11 +2,11 @@
 <s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
 					   xmlns:s="library://ns.adobe.com/flex/spark"
 					   xmlns:mx="library://ns.adobe.com/flex/mx"
-					   width="1000" height="591" minWidth="900"
+					   width="1000" height="630" minWidth="970" mouseDown="windowedapplication1_mouseDownHandler(event)"
 					   creationComplete="windowedapplication1_creationCompleteHandler(event)"
 					   nativeDragDrop="windowedapplication1_nativeDragDropHandler(event)"
 					   nativeDragEnter="windowedapplication1_nativeDragEnterHandler(event)"
-					   showStatusBar="false">
+					   showStatusBar="true">
 	<fx:Style source="style.css"/>
 	<fx:Script> 
 		<![CDATA[
@@ -25,10 +25,12 @@
 			import mx.events.CloseEvent;
 			import mx.events.FlexEvent;
 			import mx.managers.DragManager;
+			import mx.managers.PopUpManager;
 			
 			import org.flexlite.domDisplay.DxrFile;
 			import org.flexlite.domDisplay.codec.DxrDecoder;
 			import org.flexlite.domDisplay.codec.DxrEncoder;
+			import org.flexlite.domUtils.CRC32Util;
 			import org.flexlite.domUtils.DomLoader;
 			import org.flexlite.domUtils.FileUtil;
 			import org.flexlite.domUtils.SharedObjectUtil;
@@ -144,7 +146,7 @@
 					if(isAdded(group,data.url))
 						continue;
 					group.push(data);
-					if(data.type=="swf"||data.type=="dxr")
+					if(data.type=="swf"||data.type=="dxr"||data.type=="grp")
 					{
 						data.nativePath = file.nativePath;
 						subkeyList.push(data);
@@ -157,7 +159,6 @@
 			 */
 			private function nextSubkeyObject():void
 			{
-				trace(subkeyList.length);
 				if(subkeyList.length==0)
 				{
 					dp.refresh();
@@ -176,7 +177,7 @@
 						nextSubkeyObject();
 					});
 				}
-				else
+				else if(data.type=="dxr")
 				{
 					DomLoader.loadByteArray(path,function(bytes:ByteArray):void{
 						var file:DxrFile = new DxrFile(bytes);
@@ -185,7 +186,33 @@
 						nextSubkeyObject();
 					});
 				}
-				
+				else
+				{
+					data.subkeys = getSubkeysFromGrp(path);
+					nextSubkeyObject();
+				}
+			}
+			
+			private function getSubkeysFromGrp(path:String):String
+			{
+				var bytes:ByteArray = FileUtil.openAsByteArray(path);
+				try
+				{
+					bytes.uncompress();
+				}
+				catch(e:Error){}
+				bytes.position = 0;
+				bytes.readUTF();
+				var data:Object = bytes.readObject();
+				var subkeys:Array = [];
+				for(var name:String in data)
+				{
+					subkeys.push(name);
+					var item:Object = data[name];
+					if(item.subkeys)
+						subkeys = subkeys.concat(item.subkeys.split(","));
+				}
+				return subkeys.join(",");
 			}
 			
 			private function array2String(arr:Object):String
@@ -424,6 +451,7 @@
 				typeDic["png"] = "img";
 				typeDic["jpg"] = "img";
 				typeDic["gif"] = "img";
+				typeDic["grp"] = "grp";
 				typeDic["mp3"] = "sound";
 				
 				filterExtensions = ["fla","as","dxml","mxml"];
@@ -496,6 +524,7 @@
 					Alert.show("无法导出配置！name和subkeys属性中的字符串必须全局唯一。请检查已经标记为红色的区域，消除所有重复的key后重试。","提示");
 					return;
 				}
+				var type:String = exportFormat.selectedItem;
 				var folder:String = FileUtil.getDirectory(currentConfigPath);
 				FileUtil.browseForSave(function(file:File):void{
 					currentConfigPath = file.nativePath;
@@ -1077,7 +1106,8 @@
 						continue;
 					for each(var data:Object in group.list)
 					{
-						if(data.type!="dxr"&&data.type!="swf")
+						var type:String = data.type;
+						if(type!="dxr"&&type!="swf"&&type!="grp")
 							continue;
 						var url:String = srcPath.text+data.url;
 						if(!exists(url))
@@ -1099,7 +1129,42 @@
 				var resPath:String = srcPath.text;
 				if(!resPath||loadGroups.length==0)
 					return;
-				var exportPath:String = resPath.substr(0,resPath.length-1)+"_EXP"+File.separator;
+				var window:PackPanel = new PackPanel;
+				window.addEventListener("startPack",startPack);
+				var types:Array = [];
+				for each(var type:String in typeDic)
+				{
+					if(types.indexOf(type)==-1&&type!="grp")
+					{
+						types.push(type);
+					}
+				}
+				window.setData(groupDp.source,types);
+				PopUpManager.addPopUp(window,this,true);
+				PopUpManager.centerPopUp(window);
+			}
+			
+			private var exportPath:String;
+			private function startPack(event:Event):void
+			{
+				packBtn.enabled = false;
+				exportPath = SharedObjectUtil.read(FL_DIR,"packedResPath");
+				var packedConfigPath:String = SharedObjectUtil.read(FL_DIR,"packedConfigPath");
+				var copyAll:Boolean = SharedObjectUtil.read(FL_DIR,"packedCopyAll");
+				var packedGroups:Array = SharedObjectUtil.read(FL_DIR,"packedGroups");
+				compressType = SharedObjectUtil.read(FL_DIR,"packedTypes");
+				exculdeTypes = SharedObjectUtil.read(FL_DIR,"excludeTypes");
+				var resPath:String = srcPath.text;
+				if(copyAll)
+				{
+					var resList:Array = FileUtil.search(resPath,null,searchfilter);
+					for each(var file:File in resList)
+					{
+						var newPath:String = exportPath+file.nativePath.substr(resPath.length);
+						FileUtil.copyTo(file.nativePath,newPath,true);
+					}
+				}
+				
 				for each(var group:Object in loadGroups)
 				{
 					for each(var data:Object in group.list)
@@ -1113,6 +1178,12 @@
 						FileUtil.save(exportPath+data.url,bytes);
 					}
 				}
+				
+				var configData:* = mergeGroups(packedGroups);
+				FileUtil.save(packedConfigPath,configData);
+				packBtn.enabled = true;
+				
+				status = "资源已经发布到:\""+exportPath+"\"下.";
 			}
 			
 			private var compressType:Array = ["xml","json"];
@@ -1128,28 +1199,35 @@
 			}
 			
 			/**
-			 * 合并一个资源组
+			 * 合并一个资源组,返回修改后的配置文件对象
 			 */
-			private function mergeGroups(groups:Array):void
+			private function mergeGroups(groups:Array):*
 			{
 				var oldLoadGroup:Array = loadGroups;
 				var bytes:ByteArray = new ByteArray();
 				bytes.writeObject(loadGroups);
+				bytes.position = 0;
 				loadGroups = bytes.readObject();
 				
 				for each(var groupName:String in groups)
 				{
-					var group:Object = getGroupByName(groupName);
-					var langDic:Dictionary = getLanguageList(group.list);
+					var group:Array = getGroupByName(groupName);
+					if(!group)
+						continue;
+					var langDic:Dictionary = getLanguageList(group);
 					for(var lang:String in langDic)
 					{
 						var list:Array = langDic[lang];
-						var g:Object = {};
+						var groupItem:Object = createGroupItem(list,groupName.toUpperCase(),lang.toUpperCase());
+						group.push(groupItem);
 					}
 				}
-				
+				var data:* = getConfigData();
 				loadGroups = oldLoadGroup;
+				return data;
 			}
+			
+			private var exculdeTypes:Array = [];
 			/**
 			 * 根据语言分类
 			 */
@@ -1159,7 +1237,7 @@
 				for(var i:int=0;i<list.length;i++)
 				{
 					var data:Object = list[i];
-					if(data.type=="swf"||data.type=="sound")
+					if(exculdeTypes.indexOf(data.type)!=-1||data.type=="grp")
 						continue;
 					list.splice(i,1);
 					i--;
@@ -1174,23 +1252,43 @@
 			/**
 			 * 生成一个资源组节点
 			 */
-			private function createGroupItem(list:Array):Object
+			private function createGroupItem(list:Array,groupName:String,lang:String):Object
 			{
-				"name url type language size subkeys";
-				var group:Object = {type:"group",language:list[0].language};
+				var group:Object = {type:"grp",language:list[0].language};
 				var size:Number = 0;
 				var subkeys:Array = [];
+				var data:Object = {};
 				for each(var item:Object in list)
 				{
+					if(!exists(exportPath+item.url))
+						continue;
 					size += Number(item.size);
 					if(item.subkeys)
 						subkeys.push(item.subkeys);
+					data[item.name] = {type:item.type,subkeys:item.subkeys,
+						bytes:FileUtil.openAsByteArray(exportPath+item.url)};
+					FileUtil.deletePath(exportPath+item.url);
 				}
 				group.size = size.toString();
-				group.subkeys = subkeys.join(",");
-				var url:String = FileUtil.getDirectory(list[0].url)+"GROUP__";
+				if(subkeys.length>0)
+					group.subkeys = subkeys.join(",");
+				var bytes:ByteArray = new ByteArray();
+				bytes.writeUTF("dll");
+				bytes.writeObject(data);
+				bytes.compress();
+				var suffix:String = CRC32Util.getCRC32(bytes).toString(36).toUpperCase();
+				var url:String = FileUtil.getDirectory(list[0].url)+groupName+"__"+lang+"__"+suffix+".grp";
+				group.url = url;
+				group.name = groupName+"__"+suffix;
+				FileUtil.save(exportPath+url,bytes);
 				return group;
 			}
+			
+			protected function windowedapplication1_mouseDownHandler(event:MouseEvent):void
+			{
+				status = "";
+			}
+			
 		]]>
 	</fx:Script>
 	<fx:Declarations>
@@ -1255,5 +1353,5 @@
 			</s:Group>
 		</s:VGroup>
 	</s:Scroller>
-	<s:Button y="5" right="250" toolTip="将配置和资源打包发布" label="一键打包" click="button1_clickHandler(event)"/>
+	<s:Button id="packBtn" y="5" right="250" toolTip="将配置和资源打包发布" label="发布资源" click="button1_clickHandler(event)"/>
 </s:WindowedApplication>

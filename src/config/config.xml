@@ -8,6 +8,7 @@
 		<type name="amf" extensions="amf"/>
 		<type name="dxr" extensions="dxr"/>
 		<type name="img" extensions="png,jpg,gif"/>
+		<type name="grp" extensions="grp"/>
 		<type name="sound" extensions="mp3"/>
 	</types>
 </config>
