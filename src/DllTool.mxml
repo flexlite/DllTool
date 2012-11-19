@@ -244,7 +244,7 @@
 				return -1;
 			}
 			
-			private var filterPrefix:Array = ["flashx.","fl.","_flash_display_Sprite","_fla::"];
+			private var filterPrefix:Array = ["_flash_display_Sprite","::"];
 			/**
 			 * 过滤不需要的导出类名
 			 */
@@ -1102,10 +1102,10 @@
 			{
 				for each(var group:Object in loadGroups)
 				{
-					if(group.name=="loading")
-						continue;
 					for each(var data:Object in group.list)
 					{
+						if(group.name=="loading")
+							continue;
 						var type:String = data.type;
 						if(type!="dxr"&&type!="swf"&&type!="grp")
 							continue;
@@ -1262,6 +1262,7 @@
 				{
 					if(!exists(exportPath+item.url))
 						continue;
+					subkeys.push(item.name);
 					size += Number(item.size);
 					if(item.subkeys)
 						subkeys.push(item.subkeys);
