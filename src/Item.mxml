@@ -14,40 +14,36 @@
 					return;
 				}
 				lblData.text = data[column.dataField];
+				
 				if(column.dataField=="name")
 				{
-					rect.visible = data.nameRepeat!=null;
-					lblData.toolTip = rect.visible?array2String(data.nameRepeat):null;
+					rect.visible = (data.nameRepeat!=null)||(data.nameSearch!=null);
+					fillColor.color = (data.nameRepeat!=null)?0xFF0000:0x93c763;
+					if(data.nameRepeat!=null)
+						lblData.toolTip = "重复的key:  "+data.nameRepeat.join(",");
+					else if(data.nameSearch!=null)
+						lblData.toolTip = "匹配的key:  "+data.nameSearch.join(",");
+					else
+						lblData.toolTip = null;
 				}
 				else
 				{
-					rect.visible = data.subkeyRepeat!=null;
-					lblData.toolTip = rect.visible?array2String(data.subkeyRepeat):null;
-				}
-			}
-			private function array2String(arr:Array):String
-			{
-				var isFirst:Boolean = true;
-				var returnStr:String = "";
-				for each(var str:String in arr)
-				{
-					if(isFirst)
-					{
-						isFirst = false;
-						returnStr = str;
-					}
+					rect.visible = (data.subkeyRepeat!=null)||(data.subkeySearch!=null);
+					fillColor.color = (data.subkeyRepeat!=null)?0xFF0000:0x93c763;
+					if(data.subkeyRepeat!=null)
+						lblData.toolTip = "重复的key:  "+data.subkeyRepeat.join(",");
+					else if(data.subkeySearch!=null)
+						lblData.toolTip = "匹配的key:  "+data.subkeySearch.join(",");
 					else
-					{
-						returnStr += ","+str;
-					}
+						lblData.toolTip = null;
 				}
-				return "重复的key:  "+returnStr;
+				
 			}
 		]]>
 	</fx:Script>
 	<s:Rect width="100%" height="100%" id="rect">
 		<s:fill>
-			<s:SolidColor color="0xFF0000"/>
+			<s:SolidColor id="fillColor" color="0xFF0000"/>
 		</s:fill>
 	</s:Rect>
 	<s:Label id="lblData" top="9" left="7"/>

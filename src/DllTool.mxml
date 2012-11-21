@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
 					   xmlns:s="library://ns.adobe.com/flex/spark"
-					   xmlns:mx="library://ns.adobe.com/flex/mx"
-					   width="1000" height="630" minWidth="970" mouseDown="windowedapplication1_mouseDownHandler(event)"
+					   xmlns:mx="library://ns.adobe.com/flex/mx" keyDown="windowedapplication1_keyDownHandler(event)"
+					   width="1000" height="630" minWidth="600" mouseDown="windowedapplication1_mouseDownHandler(event)"
 					   creationComplete="windowedapplication1_creationCompleteHandler(event)"
 					   nativeDragDrop="windowedapplication1_nativeDragDropHandler(event)"
 					   nativeDragEnter="windowedapplication1_nativeDragEnterHandler(event)"
@@ -16,6 +16,7 @@
 			import air.update.events.UpdateEvent;
 			
 			import events.DelEvent;
+			import events.SearchEvent;
 			
 			import flash.utils.setTimeout;
 			
@@ -108,9 +109,9 @@
 			/**
 			 * "添加资源"按钮点击
 			 */
-			protected function addDirBtn_clickHandler(event:MouseEvent):void
+			protected function addDirBtn_clickHandler(event:Event):void
 			{
-				FileUtil.browseForOpen(addDir,3,null,"",srcPath.text);
+				FileUtil.browseForOpen(addDir,3,null,"添加文件夹",srcPath.text);
 			}
 			/**
 			 * 待分析subkeys的文件列表
@@ -342,6 +343,7 @@
 			 */
 			protected function windowedapplication1_creationCompleteHandler(event:FlexEvent):void
 			{
+				createMenus();
 				var appUpdater:ApplicationUpdaterUI = new ApplicationUpdaterUI();
 				currentVersion = appUpdater.currentVersion;
 				nativeWindow.title = "DllTool "+currentVersion;
@@ -375,7 +377,56 @@
 					setTimeout(doOpenConfig,300,file);
 				}
 			}
+			/**
+			 * 创建菜单
+			 */
+			private function createMenus():void
+			{
+				var menu:NativeMenu = new NativeMenu();
+				var item:NativeMenuItem;
+				item = new NativeMenuItem("文件");
+				var fileMenu:NativeMenu = new NativeMenu();
+				item.submenu = fileMenu;
+				menu.addItem(item);
+				fileMenu.addItem(createMenuItem("添加文件",addFileBtn_clickHandler,"o"));
+				fileMenu.addItem(createMenuItem("添加文件夹",addDirBtn_clickHandler,"O"));
+				fileMenu.addItem(createMenuItem("清空配置",cleanBtn_clickHandler));
+				fileMenu.addItem(new NativeMenuItem("",true));
+				fileMenu.addItem(createMenuItem("URL相对路径",browseBtn_clickHandler,"u"));
+				fileMenu.addItem(new NativeMenuItem("",true));
+				fileMenu.addItem(createMenuItem("导入",importBtn_clickHandler,"i"));
+				fileMenu.addItem(createMenuItem("导出",exportBtn_clickHandler,"s"));
+				
+				item = new NativeMenuItem("编辑");
+				var editMenu:NativeMenu = new NativeMenu();
+				item.submenu = editMenu;
+				menu.addItem(item);
+				editMenu.addItem(createMenuItem("搜索资源",searchRes,"f"));
+				editMenu.addItem(createMenuItem("清除搜索",cleanSearch,"d"));
+				editMenu.addItem(new NativeMenuItem("",true));
+				editMenu.addItem(createMenuItem("刷新subkeys",refresBtn_clickHandler,"r"));
+				editMenu.addItem(createMenuItem("移除重复的DXR",removeRepeatBtn_clickHandler));
+				
+				
+				item = new NativeMenuItem("项目");
+				var projectMenu:NativeMenu = new NativeMenu();
+				item.submenu = projectMenu;
+				menu.addItem(item);
+				projectMenu.addItem(createMenuItem("发布资源",button1_clickHandler,"p"));
+				
+				nativeWindow.menu = menu;
+			}
 			
+			private function createMenuItem(label:String,func:Function,keyCode:String=""):NativeMenuItem
+			{
+				var menuItem:NativeMenuItem = new NativeMenuItem(label);
+				if(keyCode)
+				{
+					menuItem.keyEquivalent = keyCode;
+				}
+				menuItem.addEventListener(Event.SELECT,func);
+				return menuItem;
+			}
 			/**
 			 * 刷新groupTab数据源
 			 */
@@ -513,7 +564,7 @@
 			/**
 			 * 导出配置
 			 */
-			protected function exportBtn_clickHandler(event:MouseEvent):void
+			protected function exportBtn_clickHandler(event:Event):void
 			{
 				if(loadGroups.length==0)
 				{
@@ -526,14 +577,25 @@
 				}
 				var type:String = exportFormat.selectedItem;
 				var folder:String = FileUtil.getDirectory(currentConfigPath);
-				FileUtil.browseForSave(function(file:File):void{
-					currentConfigPath = file.nativePath;
-					nativeWindow.title = "DllTool "+currentVersion+" - "+currentConfigPath;
-					SharedObjectUtil.write(FL_DIR,"lastConfig",file.nativePath);
-					if(srcPath.text)
-						SharedObjectUtil.write(FL_DIR,file.nativePath,srcPath.text);
-					FileUtil.save(file.nativePath,getConfigData());
-				},folder+"ini."+type.toLowerCase());
+				var savedType:String = SharedObjectUtil.read(FL_DIR,currentConfigPath+"type");
+				if(!currentConfigPath||savedType!=type)
+				{
+					FileUtil.browseForSave(function(file:File):void{
+						currentConfigPath = file.nativePath;
+						nativeWindow.title = "DllTool "+currentVersion+" - "+currentConfigPath;
+						SharedObjectUtil.write(FL_DIR,"lastConfig",file.nativePath);
+						if(srcPath.text)
+							SharedObjectUtil.write(FL_DIR,file.nativePath,srcPath.text);
+						SharedObjectUtil.write(FL_DIR,currentConfigPath+"type",type);
+						FileUtil.save(file.nativePath,getConfigData());
+					},folder+"ini."+type.toLowerCase(),"导出配置");
+				}
+				else
+				{
+					FileUtil.save(currentConfigPath,getConfigData());
+					status = "配置保存成功："+currentConfigPath;
+				}
+				
 				replaceSeparator(true);
 			}
 			/**
@@ -641,7 +703,7 @@
 			/**
 			 * 资源根路径改变
 			 */
-			protected function browseBtn_clickHandler(event:MouseEvent):void
+			protected function browseBtn_clickHandler(event:Event):void
 			{
 				FileUtil.browseForOpen(function(file:File):void{
 					var newPath:String = file.nativePath+File.separator;
@@ -651,7 +713,7 @@
 					srcPath.textDisplay.scrollToRange(index,index);
 					dp.refresh();
 					saveConfig();
-				},3,null,"浏览文件",srcPath.text);
+				},3,null,"修改URL相对路径",srcPath.text);
 			}
 			/**
 			 * 资源根路径改变后修改加载项的url属性
@@ -825,7 +887,7 @@
 				checkKeyRepeat();
 			}
 			
-			protected function importBtn_clickHandler(event:MouseEvent):void
+			protected function importBtn_clickHandler(event:Event):void
 			{
 				FileUtil.browseForOpen(function(file:File):void{
 					SharedObjectUtil.write(FL_DIR,"lastConfig",file.nativePath);
@@ -837,7 +899,6 @@
 			
 			private function doOpenConfig(file:File):void
 			{
-				var type:String = file.extension;
 				nativeWindow.title = "DllTool "+currentVersion+" - "+file.nativePath;
 				currentConfigPath = file.nativePath;
 				var path:String = SharedObjectUtil.read(FL_DIR,currentConfigPath);
@@ -848,6 +909,29 @@
 						path = "";
 				}
 				srcPath.text = path;
+				var type:String;
+				var savedType:String = SharedObjectUtil.read(FL_DIR,currentConfigPath+"type");
+				if(savedType)
+				{
+					type = savedType;
+				}
+				else
+				{
+					switch(file.extension)
+					{
+						case "json":
+							type = "JSON";
+							break;
+						case "xml":
+							type = "XML";
+							break;
+						default:
+							type="AMF";
+							break;
+					}
+				}
+				exportFormat.selectedItem = type;
+				SharedObjectUtil.write(FL_DIR,currentConfigPath+"type",type);
 				var index:int = srcPath.text.length-1;
 				srcPath.textDisplay.scrollToRange(index,index);
 				var data:Object;
@@ -955,7 +1039,7 @@
 			/**
 			 * "清理DXR"按钮触发
 			 */
-			protected function removeRepeatBtn_clickHandler(event:MouseEvent=null):void
+			protected function removeRepeatBtn_clickHandler(event:Event=null):void
 			{
 				if(!hasRepeatKey)
 					return;
@@ -1016,7 +1100,7 @@
 			/**
 			 * 清空当前配置
 			 */
-			protected function cleanBtn_clickHandler(event:MouseEvent):void
+			protected function cleanBtn_clickHandler(event:Event):void
 			{
 				if(loadGroups.length==0)
 					return;
@@ -1036,7 +1120,7 @@
 			/**
 			 * 添加一个新的资源组
 			 */
-			private function addGroupBtn_clickHandler(event:MouseEvent=null):void
+			private function addGroupBtn_clickHandler(event:Event=null):void
 			{
 				if(groupName.text=="")
 				{
@@ -1083,7 +1167,7 @@
 			/**
 			 * "添加文件"按钮触发
 			 */
-			protected function addFileBtn_clickHandler(event:MouseEvent):void
+			protected function addFileBtn_clickHandler(event:Event):void
 			{
 				FileUtil.browseForOpen(function(list:Array):void{
 					var files:Array = [];
@@ -1093,12 +1177,12 @@
 							files.push(file);
 					}
 					addFiles(files);
-				},2,null,"浏览文件",srcPath.text);
+				},2,null,"添加文件",srcPath.text);
 			}
 			/**
 			 * “刷新”按钮触发
 			 */
-			private function refresBtn_clickHandler(event:MouseEvent):void
+			private function refresBtn_clickHandler(event:Event):void
 			{
 				for each(var group:Object in loadGroups)
 				{
@@ -1124,7 +1208,7 @@
 			/**
 			 * “一键打包”按钮触发
 			 */
-			protected function button1_clickHandler(event:MouseEvent):void
+			protected function button1_clickHandler(event:Event):void
 			{
 				var resPath:String = srcPath.text;
 				if(!resPath||loadGroups.length==0)
@@ -1147,7 +1231,6 @@
 			private var exportPath:String;
 			private function startPack(event:Event):void
 			{
-				packBtn.enabled = false;
 				exportPath = SharedObjectUtil.read(FL_DIR,"packedResPath");
 				var packedConfigPath:String = SharedObjectUtil.read(FL_DIR,"packedConfigPath");
 				var copyAll:Boolean = SharedObjectUtil.read(FL_DIR,"packedCopyAll");
@@ -1181,7 +1264,6 @@
 				
 				var configData:* = mergeGroups(packedGroups);
 				FileUtil.save(packedConfigPath,configData);
-				packBtn.enabled = true;
 				
 				status = "资源已经发布到:\""+exportPath+"\"下.";
 			}
@@ -1285,9 +1367,78 @@
 				return group;
 			}
 			
-			protected function windowedapplication1_mouseDownHandler(event:MouseEvent):void
+			protected function windowedapplication1_mouseDownHandler(event:Event):void
 			{
 				status = "";
+			}
+			/**
+			 * 移动资源
+			 */
+			private function searchRes(event:Event=null):void
+			{
+				var w:SearchPanel = new SearchPanel();
+				w.setGroup(groupDp.source);
+				w.addEventListener(SearchEvent.SEARCH_RES,doSearch);
+				PopUpManager.addPopUp(w,this);
+				PopUpManager.centerPopUp(w);
+			}
+			
+			private function doSearch(event:SearchEvent):void
+			{
+				var keyList:Array = event.keyList;
+				for each(var group:Object in loadGroups)
+				{
+					for each(var data:Object in group.list)
+					{
+						if(keyList.indexOf(data.name)!=-1)
+						{
+							data.nameSearch = [data.name];
+						}
+						if(data.subkeys)
+						{
+							var subkeySearch:Array = [];
+							for each(var key:String in data.subkeys.split(","))
+							{
+								if(keyList.indexOf(key)!=-1&&subkeySearch.indexOf(key)==-1)
+									subkeySearch.push(key);
+							}
+							if(subkeySearch.length>0)
+								data.subkeySearch = subkeySearch;
+						}
+					}
+					
+				}
+				dp.refresh();
+			}
+			
+			private function cleanSearch(event:Event=null):void
+			{
+				for each(var group:Object in loadGroups)
+				{
+					for each(var data:Object in group.list)
+					{
+						if(data.nameSearch)
+						{
+							delete data.nameSearch;
+						}
+						if(data.subkeySearch)
+						{
+							delete data.subkeySearch;
+						}
+					}
+				}
+				dp.refresh();
+			}
+			
+			protected function windowedapplication1_keyDownHandler(event:KeyboardEvent):void
+			{
+				if(event.ctrlKey)
+				{
+					if(event.keyCode==70)
+						searchRes();
+					else if(event.keyCode==68)
+						cleanSearch();
+				}
 			}
 			
 		]]>
@@ -1311,15 +1462,13 @@
 			</s:ArrayList>
 		</s:columns>
 	</s:DataGrid>
-	<s:Button id="browseBtn" x="236" y="5" width="44" label="浏览"
+	<s:Button id="browseBtn" x="300" y="5" width="44" label="浏览"
 			  click="browseBtn_clickHandler(event)"/>
 	<s:Label x="5" y="10" text="URL相对路径:"/>
-	<s:TextInput id="srcPath" x="81" y="4" width="151" editable="false"/>
-	<s:Button id="exportBtn" y="5" right="5" width="44" label="导出"
-			  click="exportBtn_clickHandler(event)"/>
-	<s:Button id="addDirBtn" x="284" y="5" label="添加路径" click="addDirBtn_clickHandler(event)"
-			  toolTip="可直接拖拽到窗口添加"/>
-	<s:DropDownList id="exportFormat" y="5" right="53" width="70" selectedIndex="0">
+	<s:TextInput id="srcPath" x="81" y="4" width="215" editable="false"/>
+	<s:Button id="packBtn" y="5" left="348" label="发布资源" click="button1_clickHandler(event)"
+			  toolTip="将配置和资源打包发布"/>
+	<s:DropDownList id="exportFormat" y="5" right="13" width="70" selectedIndex="0">
 		<s:ArrayCollection>
 			<fx:Array>
 				<fx:String>AMF</fx:String>
@@ -1328,14 +1477,7 @@
 			</fx:Array>
 		</s:ArrayCollection>
 	</s:DropDownList>
-	<s:Label y="10" right="123" text="导出配置:"/>
-	<s:Button id="importBtn" y="5" right="177" label="打开配置" click="importBtn_clickHandler(event)"/>
-	<s:Button id="refresBtn" y="5" left="504" label="刷新" toolTip="重新读取subkey" click="refresBtn_clickHandler(event)"/>
-	<s:Button id="removeRepeatBtn" x="431" y="5" label="清理DXR"
-			  click="removeRepeatBtn_clickHandler(event)" toolTip="移除重复的subkey"/>
-	<s:Button id="cleanBtn" y="5" left="577" label="清空" click="cleanBtn_clickHandler(event)"/>
-	
-	<s:Button id="addFileBtn"  click="addFileBtn_clickHandler(event)" x="358" y="5" label="添加文件" toolTip="可直接拖拽到窗口添加"/>
+	<s:Label y="10" right="83" text="导出格式:"/>
 	<s:Scroller x="0" top="31" bottom="0" width="120">
 		<s:VGroup maxWidth="120" gap="-1" horizontalAlign="center">
 			<s:List id="groupTab" x="0" y="31" width="100%" borderVisible="false" click="groupTab_changeHandler()"
@@ -1354,5 +1496,4 @@
 			</s:Group>
 		</s:VGroup>
 	</s:Scroller>
-	<s:Button id="packBtn" y="5" right="250" toolTip="将配置和资源打包发布" label="发布资源" click="button1_clickHandler(event)"/>
 </s:WindowedApplication>

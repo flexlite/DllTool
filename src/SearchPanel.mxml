@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   width="400" height="312" close="titlewindow1_closeHandler(event)"
+			   creationComplete="titlewindow1_creationCompleteHandler(event)" textAlign="center"
+			   title="搜索">
+	<fx:Script>
+		<![CDATA[
+			import events.SearchEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			
+			import org.flexlite.domUtils.StringUtil;
+			
+			[Bindable]
+			public var dp:ArrayCollection = new ArrayCollection();
+			
+			protected function titlewindow1_creationCompleteHandler(event:FlexEvent):void
+			{
+				
+			}
+			
+			public function setGroup(group:Array):void
+			{
+				dp.source = group;
+			}
+			
+			protected function titlewindow1_closeHandler(event:CloseEvent):void
+			{
+				PopUpManager.removePopUp(this);
+			}
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				var keyStr:String = StringUtil.trim(keyArea.text);
+				PopUpManager.removePopUp(this);
+				if(keyStr=="")
+				{
+					return;
+				}
+				var e:SearchEvent = new SearchEvent(SearchEvent.SEARCH_RES);
+				var keyList:Array = [];
+				var list:Array = keyStr.split(",");
+				for each(var key:String in list)
+				{
+					keyList = keyList.concat(key.split("\n"));
+				}
+				list = keyList;
+				for each(key in list)
+				{
+					keyList = keyList.concat(key.split(" "));
+				}
+				e.keyList = keyList;
+				dispatchEvent(e);
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:Label x="24" y="15" text="要搜索的name或subkey列表，以逗号或空格分隔:"/>
+	<s:TextArea id="keyArea" x="24" y="36" width="353" height="178" textAlign="left"/>
+	<s:Button y="229" width="94" height="28" label="立即搜索" click="button1_clickHandler(event)"
+			  fontSize="14" horizontalCenter="0"/>
+</s:TitleWindow>
