@@ -588,6 +588,7 @@
 							SharedObjectUtil.write(FL_DIR,file.nativePath,srcPath.text);
 						SharedObjectUtil.write(FL_DIR,currentConfigPath+"type",type);
 						FileUtil.save(file.nativePath,getConfigData());
+						status = "配置保存成功："+currentConfigPath;
 					},folder+"ini."+type.toLowerCase(),"导出配置");
 				}
 				else
