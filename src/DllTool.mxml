@@ -144,8 +144,7 @@
 				for each(file in list)
 				{
 					var data:Object = parseFile(file);
-					if(isAdded(group,data.url))
-						continue;
+					removeByUrl(group,data.url);
 					group.push(data);
 					if(data.type=="swf"||data.type=="dxr"||data.type=="grp")
 					{
@@ -294,16 +293,20 @@
 				return true;
 			}
 			/**
-			 * 指定url的文件是否已经添加到列表了。
+			 * 指定url的文件是否已经添加到列表了。返回是否应该跳过此url。
 			 */
-			private function isAdded(group:Array,url:String):Boolean
+			private function removeByUrl(group:Array,url:String):void
 			{
+				var index:int = 0;
 				for each(var data:Object in group)
 				{
 					if(data.url==url)
-						return true;
+					{
+						group.splice(index,1);
+						return;
+					}
+					index++;
 				}
-				return false;
 			}
 			/**
 			 * type缓存字典，查询指定扩展名的类型
@@ -596,21 +599,25 @@
 					FileUtil.save(currentConfigPath,getConfigData());
 					status = "配置保存成功："+currentConfigPath;
 				}
-				
-				replaceSeparator(true);
 			}
 			/**
 			 * 根据导出类型生成当前的配置文件对象
 			 */
 			private function getConfigData():*
 			{
+				var oldLoadGroup:Array = loadGroups;
+				var bytes:ByteArray = new ByteArray();
+				bytes.writeObject(loadGroups);
+				bytes.position = 0;
+				loadGroups = bytes.readObject();
+				cleanSearch();
 				replaceSeparator(false);
 				var data:*;
 				var type:String = exportFormat.selectedItem;
 				switch(type)
 				{
 					case "AMF":
-						var bytes:ByteArray = new ByteArray();
+						bytes = new ByteArray();
 						bytes.writeObject(getConfigObject());
 						bytes.compress();
 						data = bytes;
@@ -623,6 +630,7 @@
 						data = JSON.stringify(getConfigObject());
 						break;
 				}
+				loadGroups = oldLoadGroup;
 				return data;
 			}
 			/**
