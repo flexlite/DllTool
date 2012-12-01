@@ -144,15 +144,11 @@
 				for each(file in list)
 				{
 					var data:Object = parseFile(file);
-					removeByUrl(group,data.url);
+					if(isAdded(group,data.url))
+						continue;
 					group.push(data);
-					if(data.type=="swf"||data.type=="dxr"||data.type=="grp")
-					{
-						data.nativePath = file.nativePath;
-						subkeyList.push(data);
-					}
 				}
-				nextSubkeyObject();
+				refresBtn_clickHandler();
 			}
 			/**
 			 * 分析下一个文件的subkeys
@@ -293,20 +289,19 @@
 				return true;
 			}
 			/**
-			 * 指定url的文件是否已经添加到列表了。返回是否应该跳过此url。
+			 * 指定url的文件是否已经添加到列表了。
 			 */
-			private function removeByUrl(group:Array,url:String):void
+			private function isAdded(group:Array,url:String):Boolean
 			{
-				var index:int = 0;
-				for each(var data:Object in group)
+				for each(var g:Object in loadGroups)
 				{
-					if(data.url==url)
+					for each(var data:Object in g.list)
 					{
-						group.splice(index,1);
-						return;
+						if(data.url==url)
+							return true;
 					}
-					index++;
 				}
+				return false;
 			}
 			/**
 			 * type缓存字典，查询指定扩展名的类型
@@ -1191,7 +1186,7 @@
 			/**
 			 * “刷新”按钮触发
 			 */
-			private function refresBtn_clickHandler(event:Event):void
+			private function refresBtn_clickHandler(event:Event=null):void
 			{
 				for each(var group:Object in loadGroups)
 				{

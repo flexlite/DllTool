@@ -148,6 +148,10 @@ package update
 						isNew = true;
 						break;
 					}
+					else if(v<curVs[index])
+					{
+						break;
+					}
 					index++;
 				}
 				if(isNew){
