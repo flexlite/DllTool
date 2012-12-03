@@ -1,6 +1,6 @@
 <config>
 	<!-- 版本号 -->
-	<version>1.7.2</version>
+	<version>1.7.3</version>
 	<!-- 配置服务器端cfg文件的地址 启动检查更新的时候用 如:http://127.0.0.1/uapp/update.xml -->
 	<cfg>http://update.flexlite.org/DllTool/update.xml</cfg>
 	<!-- 配置服务器端app文件的地址 启动检查更新的时候用 如:http://127.0.0.1/uapp/app.air -->

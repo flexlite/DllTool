@@ -2,7 +2,7 @@
 <s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
 					   xmlns:s="library://ns.adobe.com/flex/spark"
 					   xmlns:mx="library://ns.adobe.com/flex/mx" keyDown="windowedapplication1_keyDownHandler(event)"
-					   width="1000" height="630" minWidth="600" mouseDown="windowedapplication1_mouseDownHandler(event)"
+					   width="1000" height="630" minWidth="600"
 					   creationComplete="windowedapplication1_creationCompleteHandler(event)"
 					   nativeDragDrop="windowedapplication1_nativeDragDropHandler(event)"
 					   nativeDragEnter="windowedapplication1_nativeDragEnterHandler(event)"
@@ -38,6 +38,7 @@
 			import org.flexlite.domUtils.StringUtil;
 			
 			import spark.events.GridItemEditorEvent;
+			import spark.events.GridSelectionEvent;
 			import spark.events.IndexChangeEvent;
 			
 			import update.AirUpdate;
@@ -1373,10 +1374,6 @@
 				return group;
 			}
 			
-			protected function windowedapplication1_mouseDownHandler(event:Event):void
-			{
-				status = "";
-			}
 			/**
 			 * 移动资源
 			 */
@@ -1451,15 +1448,36 @@
 			{
 				var sizeA:Number = Number(dataA.size);
 				var sizeB:Number = Number(dataB.size);
-				return sizeA - sizeB;
+				if(sizeA > sizeB)
+					return 1;
+				if(sizeA==sizeB)
+					return 0
+				return -1;
 			}
+			
+			private function sizeLabelFunc(item:Object, column:GridColumn):String
+			{
+				return StringUtil.toSizeString(Number(item.size),2);
+			}
+			
+			protected function dataGrid_selectionChangeHandler(event:GridSelectionEvent):void
+			{
+				var list:Vector.<Object> = dataGrid.selectedItems;
+				var size:Number = 0;
+				for each(var data:Object in list)
+				{
+					size += Number(data.size);
+				}
+				status = "选中项总大小:"+StringUtil.toSizeString(size);
+			}
+			
 		]]>
 	</fx:Script>
 	<fx:Declarations>
 		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
 	</fx:Declarations>
-	<s:DataGrid id="dataGrid" left="119" right="0" top="31" bottom="0" dataProvider="{dp}"
-				editable="true"
+	<s:DataGrid id="dataGrid"  left="119" right="0" top="31" bottom="0" dataProvider="{dp}"
+				editable="true" selectionMode="multipleRows" selectionChange="dataGrid_selectionChangeHandler(event)"
 				gridItemEditorSessionSave="dataGrid_gridItemEditorSessionSaveHandler(event)"
 				requestedRowCount="4">
 		<s:columns>
@@ -1467,7 +1485,7 @@
 				<s:GridColumn dataField="name" itemRenderer="Item" headerText="name"></s:GridColumn>
 				<s:GridColumn dataField="url" headerText="url"></s:GridColumn>
 				<s:GridColumn dataField="subkeys" itemRenderer="Item" headerText="subkeys"></s:GridColumn>
-				<s:GridColumn width="75" dataField="size" sortCompareFunction="{sizeCompareFunc}" headerText="size"></s:GridColumn>
+				<s:GridColumn width="75" dataField="size" editable="false" labelFunction="{sizeLabelFunc}" sortCompareFunction="{sizeCompareFunc}" headerText="size"></s:GridColumn>
 				<s:GridColumn width="75" dataField="language" headerText="language"></s:GridColumn>
 				<s:GridColumn width="45" dataField="type" headerText="type"></s:GridColumn>
 				<s:GridColumn width="45" editable="false" itemRenderer="DelItem" headerText=""></s:GridColumn>
