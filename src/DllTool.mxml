@@ -1447,6 +1447,12 @@
 				}
 			}
 			
+			private function sizeCompareFunc(dataA:Object,dataB:Object,column:GridColumn):int
+			{
+				var sizeA:Number = Number(dataA.size);
+				var sizeB:Number = Number(dataB.size);
+				return sizeA - sizeB;
+			}
 		]]>
 	</fx:Script>
 	<fx:Declarations>
@@ -1461,7 +1467,7 @@
 				<s:GridColumn dataField="name" itemRenderer="Item" headerText="name"></s:GridColumn>
 				<s:GridColumn dataField="url" headerText="url"></s:GridColumn>
 				<s:GridColumn dataField="subkeys" itemRenderer="Item" headerText="subkeys"></s:GridColumn>
-				<s:GridColumn width="75" dataField="size" headerText="size"></s:GridColumn>
+				<s:GridColumn width="75" dataField="size" sortCompareFunction="{sizeCompareFunc}" headerText="size"></s:GridColumn>
 				<s:GridColumn width="75" dataField="language" headerText="language"></s:GridColumn>
 				<s:GridColumn width="45" dataField="type" headerText="type"></s:GridColumn>
 				<s:GridColumn width="45" editable="false" itemRenderer="DelItem" headerText=""></s:GridColumn>
