@@ -402,7 +402,7 @@
 				editMenu.addItem(createMenuItem("搜索资源",searchRes,"f"));
 				editMenu.addItem(createMenuItem("清除搜索",cleanSearch,"d"));
 				editMenu.addItem(new NativeMenuItem("",true));
-				editMenu.addItem(createMenuItem("刷新subkeys",refresBtn_clickHandler,"r"));
+				editMenu.addItem(createMenuItem("刷新资源",refresBtn_clickHandler,"r"));
 				editMenu.addItem(createMenuItem("移除重复的DXR",removeRepeatBtn_clickHandler));
 				
 				
@@ -1192,15 +1192,17 @@
 				{
 					for each(var data:Object in group.list)
 					{
-						if(group.name=="loading")
-							continue;
-						var type:String = data.type;
-						if(type!="dxr"&&type!="swf"&&type!="grp")
-							continue;
 						var url:String = srcPath.text+data.url;
 						if(!exists(url))
 							url = data.url;
 						if(!exists(url))
+							continue;
+						var file:File = new File(url);
+						data.size = file.size.toString();
+						if(group.name=="loading")
+							continue;
+						var type:String = data.type;
+						if(type!="dxr"&&type!="swf"&&type!="grp")
 							continue;
 						data.nativePath = url;
 						subkeyList.push(data);
