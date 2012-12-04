@@ -404,7 +404,7 @@
 				item.submenu = editMenu;
 				menu.addItem(item);
 				editMenu.addItem(createMenuItem("搜索资源",searchRes,"f"));
-				editMenu.addItem(createMenuItem("清除搜索",cleanSearch,"d"));
+				editMenu.addItem(createMenuItem("清除搜索",cleanSearchAndExist,"d"));
 				editMenu.addItem(new NativeMenuItem("",true));
 				editMenu.addItem(createMenuItem("刷新资源",refresBtn_clickHandler,"r"));
 				editMenu.addItem(createMenuItem("移除重复的DXR",removeRepeatBtn_clickHandler));
@@ -610,7 +610,7 @@
 				bytes.writeObject(loadGroups);
 				bytes.position = 0;
 				loadGroups = bytes.readObject();
-				cleanSearch();
+				cleanSearchAndExist();
 				replaceSeparator(false);
 				var data:*;
 				var type:String = exportFormat.selectedItem;
@@ -1023,6 +1023,7 @@
 				checkKeyRepeat();
 				refreshGroupList();
 				dp.source = getCurrentGroup();
+				refresBtn_clickHandler();
 			}
 			
 			/**
@@ -1201,7 +1202,12 @@
 						if(!exists(url))
 							url = data.url;
 						if(!exists(url))
+						{
+							data.notExists = true;
 							continue;
+						}
+						if(data.notExists)
+							delete data.notExists;
 						var file:File = new File(url);
 						data.size = file.size.toString();
 						if(group.name=="loading")
@@ -1277,6 +1283,8 @@
 				FileUtil.save(packedConfigPath,configData);
 				
 				status = "资源已经发布到:\""+exportPath+"\"下.";
+				file = new File(exportPath);
+				file.openWithDefaultApplication();
 			}
 			
 			private var compressType:Array = ["xml","json"];
@@ -1418,20 +1426,19 @@
 				dp.refresh();
 			}
 			
-			private function cleanSearch(event:Event=null):void
+			private function cleanSearchAndExist(event:Event=null):void
 			{
 				for each(var group:Object in loadGroups)
 				{
 					for each(var data:Object in group.list)
 					{
 						if(data.nameSearch)
-						{
 							delete data.nameSearch;
-						}
 						if(data.subkeySearch)
-						{
 							delete data.subkeySearch;
-						}
+						if(data.notExists)
+							delete data.notExists;
+						
 					}
 				}
 				dp.refresh();
@@ -1444,7 +1451,7 @@
 					if(event.keyCode==70)
 						searchRes();
 					else if(event.keyCode==68)
-						cleanSearch();
+						cleanSearchAndExist();
 				}
 			}
 			
@@ -1512,7 +1519,7 @@
 		<s:columns>
 			<s:ArrayList>
 				<s:GridColumn dataField="name" itemRenderer="Item" headerText="name"></s:GridColumn>
-				<s:GridColumn dataField="url" headerText="url"></s:GridColumn>
+				<s:GridColumn dataField="url" headerText="url" itemRenderer="Item"></s:GridColumn>
 				<s:GridColumn dataField="subkeys" itemRenderer="Item" headerText="subkeys"></s:GridColumn>
 				<s:GridColumn width="75" dataField="size" editable="false" labelFunction="{sizeLabelFunc}" sortCompareFunction="{sizeCompareFunc}" headerText="size"></s:GridColumn>
 				<s:GridColumn width="75" dataField="language" headerText="language"></s:GridColumn>

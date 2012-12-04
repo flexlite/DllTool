@@ -39,7 +39,7 @@
 					packedGroups = [];
 				var packedTypes:Array = SharedObjectUtil.read(FL_DIR,"packedTypes");
 				if(!packedTypes)
-					packedTypes = ["xml","json"];
+					packedTypes = ["xml","json","txt"];
 				var excludeTypes:Array = SharedObjectUtil.read(FL_DIR,"excludeTypes");
 				if(!excludeTypes)
 					excludeTypes = ["swf","sound"];

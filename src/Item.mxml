@@ -26,7 +26,7 @@
 					else
 						lblData.toolTip = null;
 				}
-				else
+				else if(column.dataField=="subkeys")
 				{
 					rect.visible = (data.subkeyRepeat!=null)||(data.subkeySearch!=null);
 					fillColor.color = (data.subkeyRepeat!=null)?0xFF0000:0x93c763;
@@ -36,6 +36,12 @@
 						lblData.toolTip = "匹配的key:  "+data.subkeySearch.join(",");
 					else
 						lblData.toolTip = null;
+				}
+				else 
+				{
+					rect.visible = data.notExists;
+					fillColor.color = 0xffb62e;
+					lblData.toolTip = data.notExists?"当前URL相对路径下不存在此文件！":null;
 				}
 				
 			}
