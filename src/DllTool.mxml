@@ -37,9 +37,12 @@
 			import org.flexlite.domUtils.SharedObjectUtil;
 			import org.flexlite.domUtils.StringUtil;
 			
+			import spark.components.IItemRenderer;
+			import spark.components.gridClasses.GridLayer;
 			import spark.events.GridItemEditorEvent;
 			import spark.events.GridSelectionEvent;
 			import spark.events.IndexChangeEvent;
+			import spark.skins.spark.DefaultGridItemRenderer;
 			
 			import update.AirUpdate;
 			
@@ -502,6 +505,7 @@
 				typeDic["jpg"] = "img";
 				typeDic["gif"] = "img";
 				typeDic["grp"] = "grp";
+				typeDic["txt"] = "txt";
 				typeDic["mp3"] = "sound";
 				
 				filterExtensions = ["fla","as","dxml","mxml"];
@@ -1471,12 +1475,37 @@
 				status = "选中项总大小:"+StringUtil.toSizeString(size);
 			}
 			
+			protected function dataGrid_doubleClickHandler(event:MouseEvent):void
+			{
+				var target:DisplayObject = event.target as DisplayObject;
+				var found:Boolean = false;
+				while(target)
+				{
+					if(target is GridLayer)
+					{
+						found = true;
+						break;
+					}
+					target = target.parent;
+				}
+				if(!found)
+					return;
+				var data:Object = dataGrid.selectedItem;
+				var url:String = srcPath.text+data.url;
+				if(!exists(url))
+					url = data.url;
+				if(!exists(url))
+					return;
+				var file:File = new File(url);
+				file.openWithDefaultApplication();
+			}
+			
 		]]>
 	</fx:Script>
 	<fx:Declarations>
 		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
 	</fx:Declarations>
-	<s:DataGrid id="dataGrid"  left="119" right="0" top="31" bottom="0" dataProvider="{dp}"
+	<s:DataGrid id="dataGrid" doubleClick="dataGrid_doubleClickHandler(event)" doubleClickEnabled="true" left="119" right="0" top="31" bottom="0" dataProvider="{dp}"
 				editable="true" selectionMode="multipleRows" selectionChange="dataGrid_selectionChangeHandler(event)"
 				gridItemEditorSessionSave="dataGrid_gridItemEditorSessionSaveHandler(event)"
 				requestedRowCount="4">
