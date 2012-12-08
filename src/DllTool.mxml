@@ -597,6 +597,8 @@
 				else
 				{
 					FileUtil.save(currentConfigPath,getConfigData());
+					if(srcPath.text)
+						SharedObjectUtil.write(FL_DIR,currentConfigPath,srcPath.text);
 					status = "配置保存成功："+currentConfigPath;
 				}
 			}
@@ -720,8 +722,8 @@
 					srcPath.text = newPath;
 					var index:int = srcPath.text.length-1;
 					srcPath.textDisplay.scrollToRange(index,index);
-					dp.refresh();
 					saveConfig();
+					refresBtn_clickHandler();
 				},3,null,"修改URL相对路径",srcPath.text);
 			}
 			/**
