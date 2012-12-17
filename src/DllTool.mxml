@@ -379,6 +379,7 @@
 					setTimeout(doOpenConfig,300,file);
 				}
 			}
+			
 			/**
 			 * 创建菜单
 			 */
@@ -390,14 +391,19 @@
 				var fileMenu:NativeMenu = new NativeMenu();
 				item.submenu = fileMenu;
 				menu.addItem(item);
-				fileMenu.addItem(createMenuItem("添加文件",addFileBtn_clickHandler,"o"));
-				fileMenu.addItem(createMenuItem("添加文件夹",addDirBtn_clickHandler,"O"));
+				fileMenu.addItem(createMenuItem("添加资源文件",addFileBtn_clickHandler,"o"));
+				fileMenu.addItem(createMenuItem("添加资源文件夹",addDirBtn_clickHandler,"O"));
 				fileMenu.addItem(createMenuItem("清空配置",cleanBtn_clickHandler));
 				fileMenu.addItem(new NativeMenuItem("",true));
 				fileMenu.addItem(createMenuItem("URL相对路径",browseBtn_clickHandler,"u"));
 				fileMenu.addItem(new NativeMenuItem("",true));
-				fileMenu.addItem(createMenuItem("导入",importBtn_clickHandler,"i"));
-				fileMenu.addItem(createMenuItem("导出",exportBtn_clickHandler,"s"));
+				fileMenu.addItem(createMenuItem("导入配置",importBtn_clickHandler,"i"));
+				fileMenu.addItem(createMenuItem("导出配置",exportBtn_clickHandler,"s"));
+				fileMenu.addItem(new NativeMenuItem("",true));
+				item = new NativeMenuItem("最近打开配置");
+				fileMenu.addItem(item);
+				recentFilesMenu = item.submenu = new NativeMenu();
+				updateRecentFilesMenu();
 				
 				item = new NativeMenuItem("编辑");
 				var editMenu:NativeMenu = new NativeMenu();
@@ -417,6 +423,29 @@
 				projectMenu.addItem(createMenuItem("发布资源",button1_clickHandler,"p"));
 				
 				nativeWindow.menu = menu;
+			}
+			
+			private var recentFilesMenu:NativeMenu;
+			
+			private function updateRecentFilesMenu():void
+			{
+				if(!recentFilesMenu)
+					return;
+				var recentFiles:Array = SharedObjectUtil.read(FL_DIR,"recentFiles") as Array;
+				if(!recentFiles)
+					recentFiles = [];
+				recentFilesMenu.removeAllItems();
+				for each(var path:String in recentFiles)
+				{
+					recentFilesMenu.addItem(createMenuItem(path,openRecentFiles));
+				}
+			}
+			
+			private function openRecentFiles(event:Event):void
+			{
+				var menuItem:NativeMenuItem = event.target as NativeMenuItem;
+				var file:File = File.applicationDirectory.resolvePath(menuItem.label);
+				doOpenConfig(file);
 			}
 			
 			private function createMenuItem(label:String,func:Function,keyCode:String=""):NativeMenuItem
@@ -538,6 +567,8 @@
 				config += '	</types>\n</config>';
 				FileUtil.save("config/config.xml",config);
 				SharedObjectUtil.write(FL_DIR,"resourcePath",srcPath.text);
+				if(srcPath.text)
+					SharedObjectUtil.write(FL_DIR,currentConfigPath,srcPath.text);
 			}
 			private function getTypeItem(name:String,ext:String):String
 			{
@@ -1026,6 +1057,15 @@
 				refreshGroupList();
 				dp.source = getCurrentGroup();
 				refresBtn_clickHandler();
+				var recentFiles:Array = SharedObjectUtil.read(FL_DIR,"recentFiles") as Array;
+				if(!recentFiles)
+					recentFiles = [];
+				if(recentFiles.indexOf(currentConfigPath)==-1)
+				{
+					recentFiles.push(currentConfigPath);
+					SharedObjectUtil.write(FL_DIR,"recentFiles",recentFiles);
+					updateRecentFilesMenu();
+				}
 			}
 			
 			/**
@@ -1510,6 +1550,7 @@
 				var file:File = new File(url);
 				file.openWithDefaultApplication();
 			}
+			
 			
 		]]>
 	</fx:Script>
