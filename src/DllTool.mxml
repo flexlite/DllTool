@@ -16,7 +16,7 @@
 			import air.update.events.UpdateEvent;
 			
 			import events.DelEvent;
-			import events.SearchEvent; 
+			import events.SearchEvent;
 			
 			import flash.utils.setTimeout;
 			
@@ -1276,7 +1276,10 @@
 							continue;
 						var bytes:ByteArray = FileUtil.openAsByteArray(url);
 						if(isCompressType(data.type))
+						{
 							bytes.compress();
+							data.size = bytes.length.toString();
+						}
 						FileUtil.save(exportPath+data.url,bytes);
 					}
 				}
@@ -1285,7 +1288,7 @@
 				FileUtil.save(packedConfigPath,configData);
 				
 				status = "资源已经发布到:\""+exportPath+"\"下.";
-				file = new File(exportPath);
+				file = File.applicationDirectory.resolvePath(exportPath);
 				file.openWithDefaultApplication();
 			}
 			
@@ -1358,7 +1361,6 @@
 			private function createGroupItem(list:Array,groupName:String,lang:String):Object
 			{
 				var group:Object = {type:"grp",language:list[0].language};
-				var size:Number = 0;
 				var subkeys:Array = [];
 				var data:Object = {};
 				for each(var item:Object in list)
@@ -1366,20 +1368,20 @@
 					if(!exists(exportPath+item.url))
 						continue;
 					subkeys.push(item.name);
-					size += Number(item.size);
 					if(item.subkeys)
 						subkeys.push(item.subkeys);
 					data[item.name] = {type:item.type,subkeys:item.subkeys,
 						bytes:FileUtil.openAsByteArray(exportPath+item.url)};
 					FileUtil.deletePath(exportPath+item.url);
 				}
-				group.size = size.toString();
+				
 				if(subkeys.length>0)
 					group.subkeys = subkeys.join(",");
 				var bytes:ByteArray = new ByteArray();
 				bytes.writeUTF("dll");
 				bytes.writeObject(data);
 				bytes.compress();
+				group.size = bytes.length.toString();
 				var suffix:String = CRC32Util.getCRC32(bytes).toString(36).toUpperCase();
 				var url:String = FileUtil.getDirectory(list[0].url)+groupName+"__"+lang+"__"+suffix+".grp";
 				group.url = url;
