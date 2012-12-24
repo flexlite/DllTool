@@ -18,6 +18,7 @@
 			import events.DelEvent;
 			import events.SearchEvent;
 			
+			import flash.utils.getTimer;
 			import flash.utils.setTimeout;
 			
 			import mx.charts.AreaChart;
@@ -163,9 +164,14 @@
 				{
 					dp.refresh();
 					checkKeyRepeat();
+					this.status = "刷新成功! 耗时:"+(getTimer()-startTime)+"ms";
 					return;
 				}
 				var data:Object = subkeyList.shift();
+				while(!data.nativePath)
+				{
+					data = subkeyList.shift();
+				}
 				var path:String = data.nativePath;
 				delete data.nativePath;
 				if(data.type=="swf")
@@ -173,7 +179,7 @@
 					DomLoader.loadRoot(path,function(root:DisplayObjectContainer,appDomain:ApplicationDomain):void{
 						var definitions:Vector.<String> = appDomain.getQualifiedDefinitionNames();
 						definitions = filterClass(definitions);
-						data.subkeys = array2String(definitions);
+						data.subkeys = definitions.join();
 						nextSubkeyObject();
 					});
 				}
@@ -182,7 +188,7 @@
 					DomLoader.loadByteArray(path,function(bytes:ByteArray):void{
 						var file:DxrFile = new DxrFile(bytes);
 						var keyList:Vector.<String> = file.getKeyList();
-						data.subkeys = array2String(keyList);
+						data.subkeys = keyList.join();
 						nextSubkeyObject();
 					});
 				}
@@ -1231,6 +1237,8 @@
 					addFiles(files);
 				},2,null,"添加文件",srcPath.text);
 			}
+			
+			private var startTime:Number = 0;
 			/**
 			 * “刷新”按钮触发
 			 */
@@ -1261,6 +1269,8 @@
 						subkeyList.push(data);
 					}
 				}
+				startTime = getTimer();
+				this.status = "正在刷新中...";
 				nextSubkeyObject();
 			}
 			
