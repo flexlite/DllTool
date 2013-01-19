@@ -183,7 +183,7 @@
 				delete data.nativePath;
 				if(data.type=="swf")
 				{
-					DomLoader.loadRoot(path,function(root:DisplayObjectContainer,appDomain:ApplicationDomain):void{
+					DomLoader.loadRoot("file:///"+path,function(root:DisplayObjectContainer,appDomain:ApplicationDomain):void{
 						var definitions:Vector.<String> = appDomain.getQualifiedDefinitionNames();
 						definitions = filterClass(definitions);
 						data.subkeys = definitions.join();
@@ -192,7 +192,7 @@
 				}
 				else if(data.type=="dxr")
 				{
-					DomLoader.loadByteArray(path,function(bytes:ByteArray):void{
+					DomLoader.loadByteArray("file:///"+path,function(bytes:ByteArray):void{
 						var file:DxrFile = new DxrFile(bytes);
 						var keyList:Vector.<String> = file.getKeyList();
 						data.subkeys = keyList.join();
@@ -364,7 +364,7 @@
 				nativeWindow.title = "DllTool "+currentVersion;
 				new AirUpdate().checkUpdate();
 				var configFile:File = File.applicationDirectory.resolvePath("config/config.xml");
-				DomLoader.loadXML(configFile.nativePath,parseConfig,null,onIoError);
+				DomLoader.loadXML("file:///"+configFile.nativePath,parseConfig,null,onIoError);
 				dataGrid.addEventListener(DelEvent.DELETE,onDeleteItem);
 				groupTab.addEventListener(DelEvent.DELETE,onDeleteItem);
 				loadGroups = [{name:"loading",list:[]},{name:"preload",list:[]}];
@@ -1001,7 +1001,7 @@
 				var data:Object;
 				if(type=="JSON"||type=="XML")
 				{
-					DomLoader.loadText(file.nativePath,function(str:String):void{
+					DomLoader.loadText("file:///"+file.nativePath,function(str:String):void{
 						if(type=="JSON")
 						{
 							try
@@ -1023,7 +1023,7 @@
 				}
 				else
 				{
-					DomLoader.loadByteArray(file.nativePath,function(bytes:ByteArray):void{
+					DomLoader.loadByteArray("file:///"+file.nativePath,function(bytes:ByteArray):void{
 						try
 						{
 							bytes.uncompress();
