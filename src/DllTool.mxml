@@ -363,7 +363,8 @@
 				currentVersion = appUpdater.currentVersion;
 				nativeWindow.title = "DllTool "+currentVersion;
 				new AirUpdate().checkUpdate();
-				DomLoader.loadXML("config/config.xml",parseConfig,null,onIoError);
+				var configFile:File = File.applicationDirectory.resolvePath("config/config.xml");
+				DomLoader.loadXML(configFile.nativePath,parseConfig,null,onIoError);
 				dataGrid.addEventListener(DelEvent.DELETE,onDeleteItem);
 				groupTab.addEventListener(DelEvent.DELETE,onDeleteItem);
 				loadGroups = [{name:"loading",list:[]},{name:"preload",list:[]}];
@@ -1274,14 +1275,14 @@
 						if(data.notExists)
 							delete data.notExists;
 						url = escapeUrl(url);
-						var file:File = new File(url);
+						var file:File = File.applicationDirectory.resolvePath(url);
 						data.size = file.size.toString();
 						if(group.name=="loading")
 							continue;
 						var type:String = data.type;
 						if(type!="dxr"&&type!="swf"&&type!="grp")
 							continue;
-						data.nativePath = url;
+						data.nativePath = file.nativePath;
 						if(subkeyList.indexOf(data)==-1)
 							subkeyList.push(data);
 					}
