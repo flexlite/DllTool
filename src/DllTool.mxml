@@ -170,6 +170,13 @@
 				var data:Object = subkeyList.shift();
 				while(!data.nativePath)
 				{
+					if(subkeyList.length==0)
+					{
+						dp.refresh();
+						checkKeyRepeat();
+						this.status = "刷新成功! 耗时:"+(getTimer()-startTime)+"ms";
+						return;
+					}
 					data = subkeyList.shift();
 				}
 				var path:String = data.nativePath;
@@ -307,7 +314,7 @@
 				{
 					for each(var data:Object in g.list)
 					{
-						if(data.url==url)
+						if(escapeUrl(data.url)==escapeUrl(url))
 							return true;
 					}
 				}
@@ -681,7 +688,7 @@
 				{
 					for each(var g:Object in loadGroups)
 					{
-						doReplace("/","\\",g.list);
+						doReplace("/",File.separator,g.list);
 					}
 					
 				}
@@ -689,9 +696,16 @@
 				{
 					for each(var group:Object in loadGroups)
 					{
-						doReplace("\\","/",group.list);
+						doReplace(File.separator,"/",group.list);
 					}
 				}
+			}
+			/**
+			 * 转换url中的反斜杠为斜杠
+			 */
+			private function escapeUrl(url:String):String
+			{
+				return url.split("\\").join("/");
 			}
 			/**
 			 *  执行替换url里的斜杠或反斜杠
@@ -788,8 +802,9 @@
 			/**
 			 * 检查指定的文件或文件夹是否存在
 			 */		
-			public static function exists(path:String):Boolean
+			public function exists(path:String):Boolean
 			{
+				path = escapeUrl(path);
 				try
 				{
 					var file:File = new File(path);
@@ -1258,6 +1273,7 @@
 						}
 						if(data.notExists)
 							delete data.notExists;
+						url = escapeUrl(url);
 						var file:File = new File(url);
 						data.size = file.size.toString();
 						if(group.name=="loading")
@@ -1266,7 +1282,8 @@
 						if(type!="dxr"&&type!="swf"&&type!="grp")
 							continue;
 						data.nativePath = url;
-						subkeyList.push(data);
+						if(subkeyList.indexOf(data)==-1)
+							subkeyList.push(data);
 					}
 				}
 				startTime = getTimer();
@@ -1338,7 +1355,7 @@
 				FileUtil.save(packedConfigPath,configData);
 				
 				status = "资源已经发布到:\""+exportPath+"\"下.";
-				file = File.applicationDirectory.resolvePath(exportPath);
+				file = File.applicationDirectory.resolvePath(escapeUrl(exportPath));
 				file.openWithDefaultApplication();
 			}
 			
@@ -1557,6 +1574,7 @@
 					url = data.url;
 				if(!exists(url))
 					return;
+				url = escapeUrl(url);
 				var file:File = new File(url);
 				file.openWithDefaultApplication();
 			}
