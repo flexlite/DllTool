@@ -29,6 +29,7 @@
 			import mx.managers.DragManager;
 			import mx.managers.PopUpManager;
 			
+			import org.bytearray.explorer.SWFExplorer;
 			import org.flexlite.domDisplay.DxrFile;
 			import org.flexlite.domDisplay.codec.DxrDecoder;
 			import org.flexlite.domDisplay.codec.DxrEncoder;
@@ -183,9 +184,9 @@
 				delete data.nativePath;
 				if(data.type=="swf")
 				{
-					DomLoader.loadRoot("file:///"+path,function(root:DisplayObjectContainer,appDomain:ApplicationDomain):void{
-						var definitions:Vector.<String> = appDomain.getQualifiedDefinitionNames();
-						definitions = filterClass(definitions);
+					DomLoader.loadByteArray("file:///"+path,function(bytes:ByteArray):void{
+						var swf:SWFExplorer = new SWFExplorer();
+						var definitions:Array = swf.parse(bytes);
 						data.subkeys = definitions.join();
 						nextSubkeyObject();
 					});
@@ -1277,8 +1278,6 @@
 						url = escapeUrl(url);
 						var file:File = File.applicationDirectory.resolvePath(url);
 						data.size = file.size.toString();
-						if(group.name=="loading")
-							continue;
 						var type:String = data.type;
 						if(type!="dxr"&&type!="swf"&&type!="grp")
 							continue;
