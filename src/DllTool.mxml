@@ -1278,6 +1278,8 @@
 						url = escapeUrl(url);
 						var file:File = File.applicationDirectory.resolvePath(url);
 						data.size = file.size.toString();
+						if(group.name=="loading")
+							continue;
 						var type:String = data.type;
 						if(type!="dxr"&&type!="swf"&&type!="grp")
 							continue;
