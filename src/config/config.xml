@@ -3,6 +3,7 @@
 	<filters-extensions>fla,as,dxml,mxml</filters-extensions><!-- 定义添加文件时要忽略的扩展名列表 -->
 	<types><!-- 定义每种文件类型对应的扩展名列表 -->
 		<type name="swf" extensions="swf"/>
+		<type name="rsl" extensions="rsl,swz"/>
 		<type name="xml" extensions="xml"/>
 		<type name="json" extensions="json"/>
 		<type name="amf" extensions="amf"/>
