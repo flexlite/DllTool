@@ -1,4 +1,4 @@
-package update
+package org.flexlite.update
 {
 	public interface IAirUpdateUI
 	{

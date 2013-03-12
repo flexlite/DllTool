@@ -1,6 +1,7 @@
-package update
+package org.flexlite.update
 {
-	import com.OpenFile;
+	
+	import air.update.ApplicationUpdaterUI;
 	
 	import flash.desktop.NativeApplication;
 	import flash.desktop.Updater;
@@ -8,6 +9,7 @@ package update
 	import flash.events.IEventDispatcher;
 	import flash.filesystem.File;
 	import flash.utils.ByteArray;
+
 	/**
 	 * app更新工具
 	 * 	步骤	1:获取本地config文件
@@ -53,16 +55,15 @@ package update
 		{
 			this.ui = ui;
 			if(!configPath){
-				localConfigPath = File.applicationDirectory.nativePath+"/update/update.xml";
+				localConfigPath = File.applicationDirectory.nativePath+"/config/update.xml";
 			}else{
 				localConfigPath = configPath;
 			}
 		}
 		
 		public static function getCurrentAppVersion():String{
-			var xml:XML = NativeApplication.nativeApplication.applicationDescriptor;
-			var ns:Namespace = xml.namespace();
-			return String(xml.ns::versionNumber);
+			var appUpdater:ApplicationUpdaterUI = new ApplicationUpdaterUI();
+			return appUpdater.currentVersion;
 		}
 		
 		/**

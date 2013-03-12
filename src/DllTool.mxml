@@ -2,7 +2,7 @@
 <s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
 					   xmlns:s="library://ns.adobe.com/flex/spark"
 					   xmlns:mx="library://ns.adobe.com/flex/mx" keyDown="windowedapplication1_keyDownHandler(event)"
-					   width="1000" height="630" minWidth="600"
+					   width="1000" height="630" minWidth="600" 
 					   creationComplete="windowedapplication1_creationCompleteHandler(event)"
 					   nativeDragDrop="windowedapplication1_nativeDragDropHandler(event)"
 					   nativeDragEnter="windowedapplication1_nativeDragEnterHandler(event)"
@@ -10,77 +10,39 @@
 	<fx:Style source="style.css"/>
 	<fx:Script> 
 		<![CDATA[
-			import air.update.ApplicationUpdater;
 			import air.update.ApplicationUpdaterUI;
-			import air.update.events.StatusUpdateEvent;
-			import air.update.events.UpdateEvent;
 			
-			import events.DelEvent;
-			import events.SearchEvent;
-			
-			import flash.utils.getTimer;
-			import flash.utils.setTimeout;
-			
-			import mx.charts.AreaChart;
 			import mx.controls.Alert;
-			import mx.core.UIComponent;
 			import mx.events.CloseEvent;
 			import mx.events.FlexEvent;
 			import mx.managers.DragManager;
 			import mx.managers.PopUpManager;
 			
-			import org.bytearray.explorer.SWFExplorer;
-			import org.flexlite.domDisplay.DxrFile;
-			import org.flexlite.domDisplay.codec.DxrDecoder;
-			import org.flexlite.domDisplay.codec.DxrEncoder;
-			import org.flexlite.domUtils.CRC32Util;
+			import org.flexlite.action.ConfigManager;
 			import org.flexlite.domUtils.DomLoader;
 			import org.flexlite.domUtils.FileUtil;
 			import org.flexlite.domUtils.SharedObjectUtil;
 			import org.flexlite.domUtils.StringUtil;
+			import org.flexlite.events.DelEvent;
+			import org.flexlite.events.SearchEvent;
+			import org.flexlite.update.AirUpdate;
+			import org.flexlite.view.PackPanel;
+			import org.flexlite.view.SearchPanel;
 			
-			import spark.components.IItemRenderer;
 			import spark.components.gridClasses.GridLayer;
 			import spark.events.GridItemEditorEvent;
 			import spark.events.GridSelectionEvent;
-			import spark.events.IndexChangeEvent;
-			import spark.skins.spark.DefaultGridItemRenderer;
-			
-			import update.AirUpdate;
-			
 			[Bindable]
-			private var groupDp:ArrayCollection = new ArrayCollection();
-			
-			[Bindable]
-			private var dp:ArrayCollection = new ArrayCollection();
-			
-			private var loadGroups:Array = [];
 			/**
-			 * 获取当前数据列表
+			 * 拖拽文件进入
 			 */
-			private function getCurrentGroup():Array
-			{
-				var name:String = groupTab.selectedItem;
-				var group:Array = getGroupByName(name);
-				if(!group)
-					group = [];
-				return group;
-			}
+			private var manager:ConfigManager = new ConfigManager();
 			
-			private function getGroupByName(name:String):Array
-			{
-				var group:Array;
-				for each(var g:Object in loadGroups)
-				{
-					if(g.name==name)
-					{
-						if(g.list is Array)
-							group = g.list;
-						break;
-					}
-				}
-				return group;
-			}
+			/**
+			 * SharedObject存储路径
+			 */		
+			public const FL_DIR:String = "FLEXLITE";
+			
 			/**
 			 * 拖拽文件进入
 			 */
@@ -110,7 +72,7 @@
 						list.push(file);
 					}
 				}
-				addFiles(list);
+				manager.addFiles(list);
 			}
 			/**
 			 * "添加资源"按钮点击
@@ -119,10 +81,7 @@
 			{
 				FileUtil.browseForOpen(addDir,3,null,"添加文件夹",srcPath.text);
 			}
-			/**
-			 * 待分析subkeys的文件列表
-			 */
-			private var subkeyList:Array = [];
+			
 			/**
 			 * 分析指定目录下的所有文件
 			 */
@@ -130,162 +89,27 @@
 			{
 				if(srcPath.text=="")
 				{
-					srcPath.text = dir.nativePath+File.separator;
-					var index:int = srcPath.text.length-1;
-					srcPath.textDisplay.scrollToRange(index,index);
-					saveConfig();
+					changeResourcePath(dir.nativePath);
 				}
 				var list:Array = FileUtil.search(dir.nativePath,null,searchfilter);
 				if(list.length==0)
 					return;
-				addFiles(list);
+				manager.addFiles(list);
 			}
 			/**
-			 * 添加文件列表
+			 * 保存资源相对路径的设置
 			 */
-			private function addFiles(list:Array):void
+			private function changeResourcePath(path:String):void
 			{
-				var group:Array = getCurrentGroup();
-				var file:File;
-				for each(file in list)
-				{
-					var data:Object = parseFile(file);
-					if(isAdded(group,data.url))
-						continue;
-					group.push(data);
-				}
-				refresBtn_clickHandler();
-			}
-			/**
-			 * 分析下一个文件的subkeys
-			 */
-			private function nextSubkeyObject():void
-			{
-				if(subkeyList.length==0)
-				{
-					dp.refresh();
-					checkKeyRepeat();
-					this.status = "刷新成功! 耗时:"+(getTimer()-startTime)+"ms";
-					return;
-				}
-				var data:Object = subkeyList.shift();
-				while(!data.nativePath)
-				{
-					if(subkeyList.length==0)
-					{
-						dp.refresh();
-						checkKeyRepeat();
-						this.status = "刷新成功! 耗时:"+(getTimer()-startTime)+"ms";
-						return;
-					}
-					data = subkeyList.shift();
-				}
-				var path:String = data.nativePath;
-				delete data.nativePath;
-				if(data.type=="swf")
-				{
-					DomLoader.loadByteArray("file:///"+path,function(bytes:ByteArray):void{
-						var swf:SWFExplorer = new SWFExplorer();
-						var definitions:Array = swf.parse(bytes);
-						data.subkeys = definitions.join();
-						nextSubkeyObject();
-					});
-				}
-				else if(data.type=="dxr")
-				{
-					DomLoader.loadByteArray("file:///"+path,function(bytes:ByteArray):void{
-						var file:DxrFile = new DxrFile(bytes);
-						var keyList:Vector.<String> = file.getKeyList();
-						data.subkeys = keyList.join();
-						nextSubkeyObject();
-					});
-				}
-				else
-				{
-					data.subkeys = getSubkeysFromGrp(path);
-					nextSubkeyObject();
-				}
+				srcPath.text = path;
+				manager.resourcePath = path;
+				var index:int = srcPath.text.length-1;
+				srcPath.textDisplay.scrollToRange(index,index);
+				SharedObjectUtil.write(FL_DIR,"resourcePath",path);
+				if(path)
+					SharedObjectUtil.write(FL_DIR,manager.currentConfigPath,path);
 			}
 			
-			private function getSubkeysFromGrp(path:String):String
-			{
-				var bytes:ByteArray = FileUtil.openAsByteArray(path);
-				try
-				{
-					bytes.uncompress();
-				}
-				catch(e:Error){}
-				bytes.position = 0;
-				bytes.readUTF();
-				var data:Object = bytes.readObject();
-				var subkeys:Array = [];
-				for(var name:String in data)
-				{
-					subkeys.push(name);
-					var item:Object = data[name];
-					if(item.subkeys)
-						subkeys = subkeys.concat(item.subkeys.split(","));
-				}
-				return subkeys.join(",");
-			}
-			
-			private function array2String(arr:Object):String
-			{
-				var isFirst:Boolean = true;
-				var returnStr:String = "";
-				arr.sort(compareFunc);
-				for each(var str:String in arr)
-				{
-					if(isFirst)
-					{
-						isFirst = false;
-						returnStr = str;
-					}
-					else
-					{
-						returnStr += ","+str;
-					}
-				}
-				return returnStr;
-			}
-			
-			private function compareFunc(dataA:String,dataB:String):int
-			{
-				if(dataA>dataB)
-					return 1;
-				if(dataA==dataB)
-					return 0;
-				return -1;
-			}
-			
-			private var filterPrefix:Array = ["_flash_display_Sprite","::"];
-			/**
-			 * 过滤不需要的导出类名
-			 */
-			private function filterClass(def:Vector.<String>):Vector.<String>
-			{
-				var definitions:Vector.<String> = new Vector.<String>();
-				for each(var definition:String in def)
-				{
-					var found:Boolean = false;
-					for each(var prefix:String in filterPrefix)
-					{
-						if(definition.indexOf(prefix)!=-1)
-						{
-							found = true;
-							break;
-						}
-					}
-					if(found)
-						continue;
-					definitions.push(definition);
-				}
-				return definitions;
-			}
-			/**
-			 * 从目录添加资源时要过滤的文件扩展名列表
-			 */
-			private var filterExtensions:Array = [];
 			/**
 			 * 文件过滤回调函数
 			 */
@@ -298,7 +122,7 @@
 				}
 				else
 				{
-					for each(var ext:String in filterExtensions)
+					for each(var ext:String in manager.filterExtensions)
 					{
 						if(file.extension==ext)
 							return false;
@@ -306,51 +130,14 @@
 				}
 				return true;
 			}
-			/**
-			 * 指定url的文件是否已经添加到列表了。
-			 */
-			private function isAdded(group:Array,url:String):Boolean
-			{
-				for each(var g:Object in loadGroups)
-				{
-					for each(var data:Object in g.list)
-					{
-						if(escapeUrl(data.url)==escapeUrl(url))
-							return true;
-					}
-				}
-				return false;
-			}
-			/**
-			 * type缓存字典，查询指定扩展名的类型
-			 */
-			private var typeDic:Dictionary = new Dictionary();
-			/**
-			 * 解析一个文件为配置数据对象
-			 */
-			private function parseFile(file:File):Object
-			{
-				var data:Object = {language:"all",size:file.size.toString()};
-				var name:String = FileUtil.getFileName(file.nativePath);
-				data.name = name;
-				var index:int = file.nativePath.indexOf(srcPath.text);
-				if(index==0)
-					data.url = file.nativePath.substr(srcPath.text.length);
-				else
-					data.url = file.nativePath;
-				if(typeDic[file.extension])
-					data.type = typeDic[file.extension];
-				else
-					data.type = "bin";
-				return data;
-			}
+			
 			/**
 			 * 加载组切换
 			 */
 			protected function groupTab_changeHandler():void
 			{
 				SharedObjectUtil.write(FL_DIR,"selectedIndex",groupTab.selectedIndex);
-				dp.source = getCurrentGroup();
+				manager.currentGroupName = groupTab.selectedItem as String;
 			}
 			
 			private var currentVersion:String = "";
@@ -359,39 +146,39 @@
 			 */
 			protected function windowedapplication1_creationCompleteHandler(event:FlexEvent):void
 			{
+				manager.app = this;
 				createMenus();
 				var appUpdater:ApplicationUpdaterUI = new ApplicationUpdaterUI();
 				currentVersion = appUpdater.currentVersion;
 				nativeWindow.title = "DllTool "+currentVersion;
 				new AirUpdate().checkUpdate();
 				var configFile:File = File.applicationDirectory.resolvePath("config/config.xml");
-				DomLoader.loadXML("file:///"+configFile.nativePath,parseConfig,null,onIoError);
+				DomLoader.loadXML(configFile.nativePath,manager.parseConfig);
 				dataGrid.addEventListener(DelEvent.DELETE,onDeleteItem);
 				groupTab.addEventListener(DelEvent.DELETE,onDeleteItem);
-				loadGroups = [{name:"loading",list:[]},{name:"preload",list:[]}];
-				refreshGroupList();
+
+				manager.refreshGroupList();
+				
 				var selectIndex:int = SharedObjectUtil.read(FL_DIR,"selectedIndex");
 				groupTab.selectedIndex = selectIndex;
-				dp.source = getCurrentGroup();
-				currentConfigPath = SharedObjectUtil.read(FL_DIR,"lastConfig");
+				manager.currentGroupName = groupTab.selectedItem as String;
+				manager.currentConfigPath = SharedObjectUtil.read(FL_DIR,"lastConfig");
 				var path:String = SharedObjectUtil.read(FL_DIR,"resourcePath");
 				if(path)
 				{
-					srcPath.text = StringUtil.trim(path);
-					var index:int = srcPath.text.length-1;
-					srcPath.textDisplay.scrollToRange(index,index);
+					changeResourcePath(StringUtil.trim(path));
 				}
-				if(currentConfigPath)
+				if(manager.currentConfigPath)
 				{
 					try
 					{
-						var file:File = new File(currentConfigPath);
+						var file:File = new File(manager.currentConfigPath);
 					}
 					catch(e:Error)
 					{
 						return;
 					}
-					setTimeout(doOpenConfig,300,file);
+					setTimeout(openConfig,300,file.nativePath);
 				}
 			}
 			
@@ -441,7 +228,9 @@
 			}
 			
 			private var recentFilesMenu:NativeMenu;
-			
+			/**
+			 * 更新最近打开文件的菜单列表
+			 */
 			private function updateRecentFilesMenu():void
 			{
 				if(!recentFilesMenu)
@@ -455,14 +244,17 @@
 					recentFilesMenu.addItem(createMenuItem(path,openRecentFiles));
 				}
 			}
-			
+			/**
+			 * 最近打开文件菜单项被点击
+			 */
 			private function openRecentFiles(event:Event):void
 			{
 				var menuItem:NativeMenuItem = event.target as NativeMenuItem;
-				var file:File = File.applicationDirectory.resolvePath(menuItem.label);
-				doOpenConfig(file);
+				openConfig(menuItem.label);
 			}
-			
+			/**
+			 * 创建一个菜单项
+			 */
 			private function createMenuItem(label:String,func:Function,keyCode:String=""):NativeMenuItem
 			{
 				var menuItem:NativeMenuItem = new NativeMenuItem(label);
@@ -473,122 +265,7 @@
 				menuItem.addEventListener(Event.SELECT,func);
 				return menuItem;
 			}
-			/**
-			 * 刷新groupTab数据源
-			 */
-			private function refreshGroupList():void
-			{
-				var source:Array = [];
-				for each(var group:Object in loadGroups)
-				{
-					if(!group.list)
-						continue;
-					var name:String = group.name;
-					if(name&&source.indexOf(name)==-1)
-						source.push(name);
-				}
-				source.sort();
-				var index:int = source.indexOf("preload");
-				if(index!=-1)
-				{
-					source.splice(index,1);
-					source.splice(0,0,"preload");
-				}
-				index = source.indexOf("loading");
-				if(index!=-1)
-				{
-					source.splice(index,1);
-					source.splice(0,0,"loading");
-				}
-				
-				groupDp.source = source;
-				var selectIndex:int = SharedObjectUtil.read(FL_DIR,"selectedIndex");
-				groupTab.selectedIndex = selectIndex;
-			}
-			/**
-			 * 解析配置文件
-			 */
-			private function parseConfig(config:XML):void
-			{
-				var types:XMLList = config.types.type;
-				for each(var type:XML in types)
-				{
-					var name:String = String(type.@name);
-					var exts:Array = String(type.@extensions).split(",");
-					for each(var ext:String in exts)
-					{
-						ext = StringUtil.trim(ext);
-						if(ext=="")
-							continue;
-						typeDic[ext] = name;
-					}
-				}
-				if(config["filters-extensions"])
-				{
-					var filters:Array = String(config["filters-extensions"][0]).split(",");
-					for each(var f:String in filters)
-					{
-						f = StringUtil.trim(f);
-						if(f=="")
-							continue;
-						filterExtensions.push(f);
-					}
-				}
-			}
-			/**
-			 * 配置文件加载失败
-			 */
-			private function onIoError(event:IOErrorEvent):void
-			{
-				typeDic["swf"] = "swf";
-				typeDic["xml"] = "xml";
-				typeDic["dxr"] = "dxr";
-				typeDic["amf"] = "amf";
-				typeDic["json"] = "json";
-				typeDic["png"] = "img";
-				typeDic["jpg"] = "img";
-				typeDic["gif"] = "img";
-				typeDic["grp"] = "grp";
-				typeDic["txt"] = "txt";
-				typeDic["mp3"] = "sound";
-				
-				filterExtensions = ["fla","as","dxml","mxml"];
-			}
 			
-			private const FL_DIR:String = "FLEXLITE";
-			/**
-			 * 保存配置
-			 */
-			private function saveConfig():void
-			{
-				var filters:String = array2String(filterExtensions);
-				
-				var config:String = '<?xml version="1.0" encoding="utf-8"?>\n<config>\n'+
-					'	<filters-extensions>'+filters+'</filters-extensions>'+
-					'<!-- 定义添加文件时要忽略的扩展名列表 -->\n	<types><!-- 定义每种文件类型对应的扩展名列表 -->\n';
-				var extDic:Dictionary = new Dictionary;
-				for(var ext:String in typeDic)
-				{
-					var type:String = typeDic[ext];
-					if(extDic[type])
-						extDic[type].push(ext);
-					else
-						extDic[type] = [ext];
-				}
-				for(var name:String in extDic)
-				{
-					config+=getTypeItem(name,array2String(extDic[name]));
-				}
-				config += '	</types>\n</config>';
-				FileUtil.save("config/config.xml",config);
-				SharedObjectUtil.write(FL_DIR,"resourcePath",srcPath.text);
-				if(srcPath.text)
-					SharedObjectUtil.write(FL_DIR,currentConfigPath,srcPath.text);
-			}
-			private function getTypeItem(name:String,ext:String):String
-			{
-				return '		<type name="'+name+'" extensions="'+ext+'"/>\n';
-			}
 			/**
 			 * 删除一项资源
 			 */
@@ -599,14 +276,14 @@
 					Alert.show("确定要删除组:"+event.data+"？","提示",Alert.YES|Alert.NO,null,function(e:CloseEvent):void{
 						if(e.detail==Alert.YES)
 						{
-							deleteGroup(event.data as String);
+							manager.deleteGroup(event.data as String);
 						}
 					});
 				}
 				else if(event.currentTarget==dataGrid)
 				{
-					dp.removeItemAt(event.itemIndex);
-					checkKeyRepeat();
+					manager.itemListData.removeItemAt(event.itemIndex);
+					manager.checkKeyRepeat();
 				}
 			}
 			
@@ -615,155 +292,40 @@
 			 */
 			protected function exportBtn_clickHandler(event:Event):void
 			{
-				if(loadGroups.length==0)
+				if(manager.numGroups==0)
 				{
 					return;
 				}
-				if(hasRepeatKey)
+				if(manager.hasRepeatKey)
 				{
 					Alert.show("无法导出配置！name和subkeys属性中的字符串必须全局唯一。请检查已经标记为红色的区域，消除所有重复的key后重试。","提示");
 					return;
 				}
 				var type:String = exportFormat.selectedItem;
-				var folder:String = FileUtil.getDirectory(currentConfigPath);
-				var savedType:String = SharedObjectUtil.read(FL_DIR,currentConfigPath+"type");
-				if(!currentConfigPath||savedType!=type)
+				var folder:String = FileUtil.getDirectory(manager.currentConfigPath);
+				var savedType:String = SharedObjectUtil.read(FL_DIR,manager.currentConfigPath+"type");
+				if(!manager.currentConfigPath||savedType!=type)
 				{
 					FileUtil.browseForSave(function(file:File):void{
-						currentConfigPath = file.nativePath;
-						nativeWindow.title = "DllTool "+currentVersion+" - "+currentConfigPath;
+						manager.currentConfigPath = file.nativePath;
+						nativeWindow.title = "DllTool "+currentVersion+" - "+manager.currentConfigPath;
 						SharedObjectUtil.write(FL_DIR,"lastConfig",file.nativePath);
 						if(srcPath.text)
 							SharedObjectUtil.write(FL_DIR,file.nativePath,srcPath.text);
-						SharedObjectUtil.write(FL_DIR,currentConfigPath+"type",type);
-						FileUtil.save(file.nativePath,getConfigData());
-						status = "配置保存成功："+currentConfigPath;
+						SharedObjectUtil.write(FL_DIR,manager.currentConfigPath+"type",type);
+						FileUtil.save(file.nativePath,manager.getConfigData(type));
+						status = "配置保存成功："+manager.currentConfigPath;
 					},folder+"ini."+type.toLowerCase(),"导出配置");
 				}
 				else
 				{
-					FileUtil.save(currentConfigPath,getConfigData());
+					FileUtil.save(manager.currentConfigPath,manager.getConfigData(type));
 					if(srcPath.text)
-						SharedObjectUtil.write(FL_DIR,currentConfigPath,srcPath.text);
-					status = "配置保存成功："+currentConfigPath;
-				}
-			}
-			/**
-			 * 根据导出类型生成当前的配置文件对象
-			 */
-			private function getConfigData():*
-			{
-				var oldLoadGroup:Array = loadGroups;
-				var bytes:ByteArray = new ByteArray();
-				bytes.writeObject(loadGroups);
-				bytes.position = 0;
-				loadGroups = bytes.readObject();
-				cleanSearchAndExist();
-				replaceSeparator(false);
-				var data:*;
-				var type:String = exportFormat.selectedItem;
-				switch(type)
-				{
-					case "AMF":
-						bytes = new ByteArray();
-						bytes.writeObject(getConfigObject());
-						bytes.compress();
-						data = bytes;
-						break;
-					case "XML":
-						var xml:XML = getConfigXML();
-						data = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"+xml.toXMLString();
-						break;
-					case "JSON":
-						data = JSON.stringify(getConfigObject());
-						break;
-				}
-				loadGroups = oldLoadGroup;
-				return data;
-			}
-			/**
-			 * 替换url里的斜杠或反斜杠
-			 */
-			private function replaceSeparator(windowsStyle:Boolean):void
-			{
-				if(windowsStyle)
-				{
-					for each(var g:Object in loadGroups)
-					{
-						doReplace("/",File.separator,g.list);
-					}
-					
-				}
-				else
-				{
-					for each(var group:Object in loadGroups)
-					{
-						doReplace(File.separator,"/",group.list);
-					}
-				}
-			}
-			/**
-			 * 转换url中的反斜杠为斜杠
-			 */
-			private function escapeUrl(url:String):String
-			{
-				return url.split("\\").join("/");
-			}
-			/**
-			 *  执行替换url里的斜杠或反斜杠
-			 */
-			private function doReplace(p:String,rep:String,group:Array):void
-			{
-				for each(var data:Object in group)
-				{
-					data.url = StringUtil.replaceStr(data.url,p,rep);
+						SharedObjectUtil.write(FL_DIR,manager.currentConfigPath,srcPath.text);
+					status = "配置保存成功："+manager.currentConfigPath;
 				}
 			}
 			
-			/**
-			 * 获取配置文件数据Object对象
-			 */
-			private function getConfigObject():Object
-			{
-				var config:Object = {};
-				for each(var g:Object in loadGroups)
-				{
-					config[g.name] = g.list;
-				}
-				return config;
-			}
-			/**
-			 * 获取配置文件数据XML对象
-			 */
-			private function getConfigXML():XML
-			{
-				var xml:XML = <root/>;
-				if(loadGroups.length>0)
-				{
-					for each(var group:Object in loadGroups)
-					{
-						var lazyload:XML = <group name={group.name}/>;
-						for each(var data:Object in group.list)
-						{
-							lazyload.appendChild(parseXML(data));
-						}
-						xml.appendChild(lazyload);
-					}
-				}
-				return xml;
-			}
-			/**
-			 * 把一个Object转换成XML节点
-			 */
-			private function parseXML(data:Object):XML
-			{
-				var item:XML = <item name={data.name} url={data.url} type={data.type} language={data.language} size={data.size}/>;
-				if(data["subkeys"])
-				{
-					item.@subkeys = data.subkeys;
-				}
-				return item;
-			}
 			/**
 			 * 资源根路径改变
 			 */
@@ -771,217 +333,46 @@
 			{
 				FileUtil.browseForOpen(function(file:File):void{
 					var newPath:String = file.nativePath+File.separator;
-					replaceUrl(newPath);
-					srcPath.text = newPath;
-					var index:int = srcPath.text.length-1;
-					srcPath.textDisplay.scrollToRange(index,index);
-					saveConfig();
+					manager.replaceUrl(newPath,srcPath.text);
+					changeResourcePath(newPath);
 					refresBtn_clickHandler();
 				},3,null,"修改URL相对路径",srcPath.text);
 			}
-			/**
-			 * 资源根路径改变后修改加载项的url属性
-			 */
-			private function replaceUrl(newPath:String):void
-			{
-				var lastPath:String = srcPath.text;
-				for each(var g:Object in loadGroups)
-				{
-					for each(var data:Object in g.list)
-					{
-						var url:String = lastPath+data.url;
-						
-						if(!exists(url))
-							url = data.url;
-						if(url.indexOf(newPath)==0)
-						{
-							data.url = url.substring(newPath.length);;
-						}
-					}
-				}
-			}
 			
-			/**
-			 * 检查指定的文件或文件夹是否存在
-			 */		
-			public function exists(path:String):Boolean
-			{
-				path = escapeUrl(path);
-				try
-				{
-					var file:File = new File(path);
-					return file.exists;
-				}
-				catch(e:Error)
-				{
-					return false;
-				}
-				return false;
-			}
-			
-			private var hasRepeatKey:Boolean = false;
-			/**
-			 * 键名缓存字典
-			 */
-			private var keyMap:Dictionary;
-			/**
-			 * 检查是否含有重复键名并标记
-			 */
-			private function checkKeyRepeat():void
-			{
-				keyMap = new Dictionary();
-				hasRepeatKey = false;
-				findKeys();
-				for(var key:String in keyMap)
-				{
-					if(keyMap[key].length>1)
-					{
-						markRepeat(keyMap[key],key);
-					}
-				}
-				dp.refresh();
-			}
-			/**
-			 * 获取所有的键名
-			 */
-			private function findKeys():void
-			{
-				for each(var group:Object in loadGroups)
-				{
-					for each(var data:Object in group.list)
-					{
-						if(keyMap[data.name])
-							keyMap[data.name].push(data);
-						else
-							keyMap[data.name] = [data];
-						if(data.hasOwnProperty("subkeys"))
-						{
-							var keys:Array = (data.subkeys as String).split(",");
-							for each(var key:String in keys)
-							{
-								if(key=="")
-									continue;
-								if(keyMap[key])
-									keyMap[key].push(data);
-								else
-									keyMap[key] = [data];
-							}
-						}
-						delete data.nameRepeat;
-						delete data.subkeyRepeat;
-					}
-				}
-			}
-			/**
-			 * 检查列表里的重复项
-			 */
-			private function markRepeat(list:Array,key:String):void
-			{
-				var langDic:Dictionary = new Dictionary();
-				var hasAll:Boolean = false;
-				var data:Object;
-				for each(data in list)
-				{
-					var language:String = data.language;
-					if(language=="all")
-					{
-						hasAll = true;
-						break;
-					}
-					if(langDic[language])
-						langDic[language].push(data);
-					else
-						langDic[language] = [data];
-				}
-				if(hasAll)
-				{
-					for each(data in list)
-					markOneRepeat(data,key);
-				}
-				else
-				{
-					for each(var arr:Array in langDic)
-					{
-						if(arr.length>1)
-						{
-							for each(data in arr)
-							markOneRepeat(data,key);
-						}
-					}
-				}
-			}
-			/**
-			 * 标记一个重复项
-			 */
-			private function markOneRepeat(data:Object,key:String):void
-			{
-				hasRepeatKey = true;
-				if(data.name==key)
-				{
-					if(data.nameRepeat)
-					{
-						if(data.nameRepeat.indexOf(key)==-1)
-							data.nameRepeat.push(key);
-					}
-					else
-					{
-						data.nameRepeat = [key];
-					}
-				}
-				var subkeys:String = data.subkeys;
-				if(subkeys)
-				{
-					var keys:Array = subkeys.split(",");
-					if(keys.indexOf(key)!=-1)
-					{
-						if(data.subkeyRepeat)
-						{
-							if(data.subkeyRepeat.indexOf(key)==-1)
-								data.subkeyRepeat.push(key);
-						}
-						else
-						{
-							data.subkeyRepeat = [key];
-						}
-					}
-				}
-			}
 			
 			protected function dataGrid_gridItemEditorSessionSaveHandler(event:GridItemEditorEvent):void
 			{
-				checkKeyRepeat();
+				manager.checkKeyRepeat();
 			}
 			
 			protected function importBtn_clickHandler(event:Event):void
 			{
 				FileUtil.browseForOpen(function(file:File):void{
 					SharedObjectUtil.write(FL_DIR,"lastConfig",file.nativePath);
-					doOpenConfig(file);
+					openConfig(file.nativePath);
 				},1,null,"打开配置文件",srcPath.text);
 			}
 			
-			private var currentConfigPath:String;
-			
-			private function doOpenConfig(file:File):void
+			private function openConfig(configPath:String):void
 			{
-				nativeWindow.title = "DllTool "+currentVersion+" - "+file.nativePath;
-				currentConfigPath = file.nativePath;
-				var path:String = SharedObjectUtil.read(FL_DIR,currentConfigPath);
-				if(!path)
+				nativeWindow.title = "DllTool "+currentVersion+" - "+configPath;
+				var resPath:String = SharedObjectUtil.read(FL_DIR,configPath);
+				if(!resPath)
 				{
-					path = SharedObjectUtil.read(FL_DIR,"resourcePath");
-					if(!path)
-						path = "";
+					resPath = SharedObjectUtil.read(FL_DIR,"resourcePath");
+					if(!resPath)
+						resPath = "";
 				}
-				srcPath.text = path;
+				changeResourcePath(resPath);
 				var type:String;
-				var savedType:String = SharedObjectUtil.read(FL_DIR,currentConfigPath+"type");
+				var savedType:String = SharedObjectUtil.read(FL_DIR,configPath+"type");
 				if(savedType)
 				{
 					type = savedType;
 				}
 				else
 				{
+					var file:File = File.applicationDirectory.resolvePath(configPath);
 					switch(file.extension)
 					{
 						case "json":
@@ -996,198 +387,43 @@
 					}
 				}
 				exportFormat.selectedItem = type;
-				SharedObjectUtil.write(FL_DIR,currentConfigPath+"type",type);
-				var index:int = srcPath.text.length-1;
-				srcPath.textDisplay.scrollToRange(index,index);
-				var data:Object;
-				if(type=="JSON"||type=="XML")
-				{
-					DomLoader.loadText("file:///"+file.nativePath,function(str:String):void{
-						if(type=="JSON")
-						{
-							try
-							{
-								data = JSON.parse(str);
-							}
-							catch(e:Error){}
-						}
-						else
-						{
-							try
-							{
-								data = XML(str);
-							}
-							catch(e:Error){}
-						}
-						importConfigObject(data);
-					});
-				}
-				else
-				{
-					DomLoader.loadByteArray("file:///"+file.nativePath,function(bytes:ByteArray):void{
-						try
-						{
-							bytes.uncompress();
-						}
-						catch(e:Error){}
-						try
-						{
-							bytes.position = 0;
-							data = bytes.readObject();
-						}catch(e:Error){}
-						importConfigObject(data);
-					});
-				}
-			}
-			
-			private function importConfigObject(data:Object):void
-			{
-				loadGroups.length = 0;
-				if(data==null)
-				{
-					dp.refresh();
-					return;
-				}
-				if(data is XML)
-				{
-					var xmlConfig:XML = data as XML;
-					data = {};
-					for each(var group:XML in xmlConfig.children())
-					{
-						var name:String = String(group.@name);
-						if(name=="")
-							continue;
-						var g:Array = getGroupByName(name);
-						if(!g)
-						{
-							g = [];
-							var obj:Object = {name:name,list:g};
-							loadGroups.push(obj);
-						}
-						getItemFromXML(group,g);
-							
-					}
-				}
-				else
-				{
-					for(var key:String in data)
-					{
-						loadGroups.push({name:key,list:data[key]});
-					}
-				}
-				replaceSeparator(true);
-				checkKeyRepeat();
-				refreshGroupList();
-				dp.source = getCurrentGroup();
-				refresBtn_clickHandler();
+				SharedObjectUtil.write(FL_DIR,configPath+"type",type);
+
+				manager.openConfig(configPath,type);
+				
 				var recentFiles:Array = SharedObjectUtil.read(FL_DIR,"recentFiles") as Array;
 				if(!recentFiles)
 					recentFiles = [];
-				if(recentFiles.indexOf(currentConfigPath)==-1)
+				if(recentFiles.indexOf(configPath)==-1)
 				{
-					recentFiles.push(currentConfigPath);
+					recentFiles.push(configPath);
 					SharedObjectUtil.write(FL_DIR,"recentFiles",recentFiles);
 					updateRecentFilesMenu();
 				}
 			}
 			
 			/**
-			 * 从xml里解析加载项
-			 */		
-			private function getItemFromXML(xml:XML,group:Array = null):void
-			{
-				for each(var item:XML in xml.children())
-				{
-					var lang:String = String(item.@language);
-					var obj:Object = {name:String(item.@name),url:String(item.@url),
-						language:String(item.@language),type:String(item.@type),size:String(item.@size)};
-					if(item.hasOwnProperty("@subkeys"))
-						obj.subkeys = String(item.@subkeys);
-					if(group)
-						group.push(obj);
-				}
-			}
-			private const MAX_REPEAT_TIMES:int = 10;
-			private var currentRepeatTime:int = 1;
-			
-			private var removedDxrKey:Dictionary;
-			/**
 			 * "清理DXR"按钮触发
 			 */
-			protected function removeRepeatBtn_clickHandler(event:Event=null):void
+			protected function removeRepeatBtn_clickHandler(event:Event):void
 			{
-				if(!hasRepeatKey)
-					return;
-				if(currentRepeatTime>MAX_REPEAT_TIMES)
-				{
-					currentRepeatTime = 1;
-					return;
-				}
-				currentRepeatTime++;
-				removedDxrKey = new Dictionary();
-				for each(var group:Object in loadGroups)
-				{
-					removeRepeatDxr(group.list);
-				}
-				checkKeyRepeat();
-				removeRepeatBtn_clickHandler();
+				manager.removeRepeatDxrs();
 			}
 			
 			
-			/**
-			 * 移除重复Dxr素材
-			 */
-			private function removeRepeatDxr(group:Array):void
-			{
-				for each(var data:Object in group)
-				{
-					if(data.type!="dxr")
-						continue;
-					var repeat:Array = data.subkeyRepeat;
-					if(!repeat)
-						continue;
-					var url:String = srcPath.text + data.url;
-					if(!exists(url))
-						url = data.url;
-					var bytes:ByteArray = FileUtil.openAsByteArray(url);
-					if(!bytes)
-						continue;
-					bytes.position = 0;
-					var keyObject:Object = DxrDecoder.readObject(bytes);
-					var keyList:Object = keyObject.keyList;
-					if(!keyList)
-						continue;
-					for each(var subkey:String in repeat)
-					{
-						if(removedDxrKey[subkey])
-							continue;
-						removedDxrKey[subkey] = true;
-						var subkeys:Array = (data.subkeys as String).split(",");
-						var index:int = subkeys.indexOf(subkey);
-						subkeys.splice(index,1);
-						data.subkeys = subkeys.join(",");
-						delete keyList[subkey];
-					}
-					bytes = DxrEncoder.writeObject(keyObject);
-					FileUtil.save(url,bytes);
-				}
-			}
+			
 			/**
 			 * 清空当前配置
 			 */
 			protected function cleanBtn_clickHandler(event:Event):void
 			{
-				if(loadGroups.length==0)
+				if(manager.numGroups==0)
 					return;
 				Alert.show("确定要清空当前配置？（不会影响已经导出的文件)","提示",Alert.YES|Alert.NO,null,function(e:CloseEvent):void{
 					if(e.detail==Alert.YES)
 					{
-						hasRepeatKey = false;
-						currentConfigPath = "";
+						manager.cleanAll();
 						nativeWindow.title = "DllTool "+currentVersion;
-						loadGroups = [{name:"loading",list:[]},{name:"preload",list:[]}];
-						refreshGroupList();
-						dp.source = getCurrentGroup();
 						groupTab.selectedIndex = 1;
 					}
 				});
@@ -1202,36 +438,18 @@
 					Alert.show("请先输入组名!","提示");
 					return;
 				}
-				if(groupDp.source.indexOf(groupName.text)!=-1)
+				if(manager.hasGroupName(groupName.text))
 				{
 					Alert.show("无法添加，该组名已经存在！","提示");
 					return;
 				}
-				var group:Object = {name:groupName.text,list:[]};
-				loadGroups.push(group);
-				refreshGroupList();
+				manager.addOneGroup({name:groupName.text,list:[]});
+				manager.refreshGroupList();
 				groupTab.selectedItem = groupName.text;
-				dp.source = getCurrentGroup();
 				SharedObjectUtil.write(FL_DIR,"selectedIndex",groupTab.selectedIndex);
 				groupName.text = "";
 			}
-			/**
-			 * 删除一个资源组
-			 */
-			private function deleteGroup(name:String):void
-			{
-				for(var i:int=0;i<loadGroups.length;i++)
-				{
-					var g:Object = loadGroups[i];
-					if(g.name==name)
-					{
-						loadGroups.splice(i,1);
-						break;
-					}
-				}
-				refreshGroupList();
-				dp.source = getCurrentGroup();
-			}
+			
 			/**
 			 * 输入组名后按回车
 			 */
@@ -1251,46 +469,16 @@
 						if(searchfilter(file))
 							files.push(file);
 					}
-					addFiles(files);
+					manager.addFiles(files);
 				},2,null,"添加文件",srcPath.text);
 			}
 			
-			private var startTime:Number = 0;
 			/**
 			 * “刷新”按钮触发
 			 */
 			private function refresBtn_clickHandler(event:Event=null):void
 			{
-				for each(var group:Object in loadGroups)
-				{
-					for each(var data:Object in group.list)
-					{
-						var url:String = srcPath.text+data.url;
-						if(!exists(url))
-							url = data.url;
-						if(!exists(url))
-						{
-							data.notExists = true;
-							continue;
-						}
-						if(data.notExists)
-							delete data.notExists;
-						url = escapeUrl(url);
-						var file:File = File.applicationDirectory.resolvePath(url);
-						data.size = file.size.toString();
-						if(group.name=="loading")
-							continue;
-						var type:String = data.type;
-						if(type!="dxr"&&type!="swf"&&type!="grp")
-							continue;
-						data.nativePath = file.nativePath;
-						if(subkeyList.indexOf(data)==-1)
-							subkeyList.push(data);
-					}
-				}
-				startTime = getTimer();
-				this.status = "正在刷新中...";
-				nextSubkeyObject();
+				manager.refreshAll();
 			}
 			
 			/**
@@ -1299,222 +487,65 @@
 			protected function button1_clickHandler(event:Event):void
 			{
 				var resPath:String = srcPath.text;
-				if(!resPath||loadGroups.length==0)
+				if(!resPath||manager.numGroups==0)
 					return;
 				var window:PackPanel = new PackPanel;
 				window.addEventListener("startPack",startPack);
-				var types:Array = [];
-				for each(var type:String in typeDic)
-				{
-					if(types.indexOf(type)==-1&&type!="grp")
-					{
-						types.push(type);
-					}
-				}
-				window.setData(groupDp.source,types);
+				window.setData(manager.groupNameData.source,manager.resTypes);
 				PopUpManager.addPopUp(window,this,true);
 				PopUpManager.centerPopUp(window);
 			}
-			
-			private var exportPath:String;
+			/**
+			 * 开始打包并发布资源
+			 */
 			private function startPack(event:Event):void
 			{
-				exportPath = SharedObjectUtil.read(FL_DIR,"packedResPath");
+				var exportPath:String = SharedObjectUtil.read(FL_DIR,"packedResPath");
 				var packedConfigPath:String = SharedObjectUtil.read(FL_DIR,"packedConfigPath");
-				var copyAll:Boolean = SharedObjectUtil.read(FL_DIR,"packedCopyAll");
+				var compressType:Array = SharedObjectUtil.read(FL_DIR,"packedTypes");
 				var packedGroups:Array = SharedObjectUtil.read(FL_DIR,"packedGroups");
-				compressType = SharedObjectUtil.read(FL_DIR,"packedTypes");
-				exculdeTypes = SharedObjectUtil.read(FL_DIR,"excludeTypes");
-				var resPath:String = srcPath.text;
+				var exculdeTypes:Array = SharedObjectUtil.read(FL_DIR,"excludeTypes");
+				var copyAll:Boolean = SharedObjectUtil.read(FL_DIR,"packedCopyAll");
 				if(copyAll)
 				{
-					var resList:Array = FileUtil.search(resPath,null,searchfilter);
+					var resList:Array = FileUtil.search(srcPath.text,null,searchfilter);
 					for each(var file:File in resList)
 					{
-						var newPath:String = exportPath+file.nativePath.substr(resPath.length);
+						var newPath:String = exportPath+file.nativePath.substr(srcPath.text.length);
 						FileUtil.copyTo(file.nativePath,newPath,true);
 					}
 				}
 				
-				for each(var group:Object in loadGroups)
-				{
-					for each(var data:Object in group.list)
-					{
-						var url:String = resPath+data.url;
-						if(!exists(url))
-							continue;
-						var bytes:ByteArray = FileUtil.openAsByteArray(url);
-						if(isCompressType(data.type))
-						{
-							bytes.compress();
-							data.size = bytes.length.toString();
-						}
-						FileUtil.save(exportPath+data.url,bytes);
-					}
-				}
-				
-				var configData:* = mergeGroups(packedGroups);
-				FileUtil.save(packedConfigPath,configData);
+				manager.startPack(exportPath,packedConfigPath,compressType,
+					packedGroups,exculdeTypes,exportFormat.selectedItem as String);
 				
 				status = "资源已经发布到:\""+exportPath+"\"下.";
-				file = File.applicationDirectory.resolvePath(escapeUrl(exportPath));
-				file.openWithDefaultApplication();
-			}
-			
-			private var compressType:Array = ["xml","json"];
-			
-			private function isCompressType(type:String):Boolean
-			{
-				for each(var t:String in compressType)
-				{
-					if(t==type)
-						return true;
-				}
-				return false;
 			}
 			
 			/**
-			 * 合并一个资源组,返回修改后的配置文件对象
-			 */
-			private function mergeGroups(groups:Array):*
-			{
-				var oldLoadGroup:Array = loadGroups;
-				var bytes:ByteArray = new ByteArray();
-				bytes.writeObject(loadGroups);
-				bytes.position = 0;
-				loadGroups = bytes.readObject();
-				
-				for each(var groupName:String in groups)
-				{
-					var group:Array = getGroupByName(groupName);
-					if(!group)
-						continue;
-					var langDic:Dictionary = getLanguageList(group);
-					for(var lang:String in langDic)
-					{
-						var list:Array = langDic[lang];
-						var groupItem:Object = createGroupItem(list,groupName.toUpperCase(),lang.toUpperCase());
-						group.push(groupItem);
-					}
-				}
-				var data:* = getConfigData();
-				loadGroups = oldLoadGroup;
-				return data;
-			}
-			
-			private var exculdeTypes:Array = [];
-			/**
-			 * 根据语言分类
-			 */
-			private function getLanguageList(list:Array):Dictionary
-			{
-				var langDic:Dictionary = new Dictionary();
-				for(var i:int=0;i<list.length;i++)
-				{
-					var data:Object = list[i];
-					if(exculdeTypes.indexOf(data.type)!=-1||data.type=="grp")
-						continue;
-					list.splice(i,1);
-					i--;
-					var lang:String = data.language;
-					if(langDic[lang])
-						langDic[lang].push(data);
-					else
-						langDic[lang] = [data];
-				}
-				return langDic;
-			}
-			/**
-			 * 生成一个资源组节点
-			 */
-			private function createGroupItem(list:Array,groupName:String,lang:String):Object
-			{
-				var group:Object = {type:"grp",language:list[0].language};
-				var subkeys:Array = [];
-				var data:Object = {};
-				for each(var item:Object in list)
-				{
-					if(!exists(exportPath+item.url))
-						continue;
-					subkeys.push(item.name);
-					if(item.subkeys)
-						subkeys.push(item.subkeys);
-					data[item.name] = {type:item.type,subkeys:item.subkeys,
-						bytes:FileUtil.openAsByteArray(exportPath+item.url)};
-					FileUtil.deletePath(exportPath+item.url);
-				}
-				
-				if(subkeys.length>0)
-					group.subkeys = subkeys.join(",");
-				var bytes:ByteArray = new ByteArray();
-				bytes.writeUTF("dll");
-				bytes.writeObject(data);
-				bytes.compress();
-				group.size = bytes.length.toString();
-				var suffix:String = CRC32Util.getCRC32(bytes).toString(36).toUpperCase();
-				var url:String = FileUtil.getDirectory(list[0].url)+groupName+"__"+lang+"__"+suffix+".grp";
-				group.url = url;
-				group.name = groupName+"__"+suffix;
-				FileUtil.save(exportPath+url,bytes);
-				return group;
-			}
-			
-			/**
-			 * 移动资源
+			 * 搜索资源
 			 */
 			private function searchRes(event:Event=null):void
 			{
 				var w:SearchPanel = new SearchPanel();
-				w.setGroup(groupDp.source);
+				w.setGroup(manager.groupNameData.source);
 				w.addEventListener(SearchEvent.SEARCH_RES,doSearch);
 				PopUpManager.addPopUp(w,this);
 				PopUpManager.centerPopUp(w);
 			}
-			
+			/**
+			 * 执行搜索
+			 */
 			private function doSearch(event:SearchEvent):void
 			{
-				var keyList:Array = event.keyList;
-				for each(var group:Object in loadGroups)
-				{
-					for each(var data:Object in group.list)
-					{
-						if(keyList.indexOf(data.name)!=-1)
-						{
-							data.nameSearch = [data.name];
-						}
-						if(data.subkeys)
-						{
-							var subkeySearch:Array = [];
-							for each(var key:String in data.subkeys.split(","))
-							{
-								if(keyList.indexOf(key)!=-1&&subkeySearch.indexOf(key)==-1)
-									subkeySearch.push(key);
-							}
-							if(subkeySearch.length>0)
-								data.subkeySearch = subkeySearch;
-						}
-					}
-					
-				}
-				dp.refresh();
+				manager.searchKeys(event.keyList);
 			}
-			
-			private function cleanSearchAndExist(event:Event=null):void
+			/**
+			 * 清除搜索记录
+			 */
+			private function cleanSearchAndExist(event:Event):void
 			{
-				for each(var group:Object in loadGroups)
-				{
-					for each(var data:Object in group.list)
-					{
-						if(data.nameSearch)
-							delete data.nameSearch;
-						if(data.subkeySearch)
-							delete data.subkeySearch;
-						if(data.notExists)
-							delete data.notExists;
-						
-					}
-				}
-				dp.refresh();
+				manager.cleanSearchAndExist(false);
 			}
 			
 			protected function windowedapplication1_keyDownHandler(event:KeyboardEvent):void
@@ -1524,10 +555,12 @@
 					if(event.keyCode==70)
 						searchRes();
 					else if(event.keyCode==68)
-						cleanSearchAndExist();
+						manager.cleanSearchAndExist(false);
 				}
 			}
-			
+			/**
+			 * 文件大小排序函数
+			 */
 			private function sizeCompareFunc(dataA:Object,dataB:Object,column:GridColumn):int
 			{
 				var sizeA:Number = Number(dataA.size);
@@ -1538,12 +571,16 @@
 					return 0
 				return -1;
 			}
-			
+			/**
+			 * 文件大小显示格式化函数
+			 */
 			private function sizeLabelFunc(item:Object, column:GridColumn):String
 			{
 				return StringUtil.toSizeString(Number(item.size),2);
 			}
-			
+			/**
+			 * 选中项改变
+			 */
 			protected function dataGrid_selectionChangeHandler(event:GridSelectionEvent):void
 			{
 				var list:Vector.<Object> = dataGrid.selectedItems;
@@ -1554,7 +591,9 @@
 				}
 				status = "选中项总大小:"+StringUtil.toSizeString(size);
 			}
-			
+			/**
+			 * 双击打开文件
+			 */
 			protected function dataGrid_doubleClickHandler(event:MouseEvent):void
 			{
 				var target:DisplayObject = event.target as DisplayObject;
@@ -1572,34 +611,33 @@
 					return;
 				var data:Object = dataGrid.selectedItem;
 				var url:String = srcPath.text+data.url;
-				if(!exists(url))
+				if(!manager.exists(url))
 					url = data.url;
-				if(!exists(url))
+				if(!manager.exists(url))
 					return;
-				url = escapeUrl(url);
+				url = manager.escapeUrl(url);
 				var file:File = new File(url);
 				file.openWithDefaultApplication();
 			}
-			
 			
 		]]>
 	</fx:Script>
 	<fx:Declarations>
 		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
 	</fx:Declarations>
-	<s:DataGrid id="dataGrid" doubleClick="dataGrid_doubleClickHandler(event)" doubleClickEnabled="true" left="119" right="0" top="31" bottom="0" dataProvider="{dp}"
+	<s:DataGrid id="dataGrid" doubleClick="dataGrid_doubleClickHandler(event)" doubleClickEnabled="true" left="119" right="0" top="31" bottom="0" dataProvider="{manager.itemListData}"
 				editable="true" selectionMode="multipleRows" selectionChange="dataGrid_selectionChangeHandler(event)"
 				gridItemEditorSessionSave="dataGrid_gridItemEditorSessionSaveHandler(event)"
 				requestedRowCount="4">
 		<s:columns>
 			<s:ArrayList>
-				<s:GridColumn dataField="name" itemRenderer="Item" headerText="name"></s:GridColumn>
-				<s:GridColumn dataField="url" headerText="url" itemRenderer="Item"></s:GridColumn>
-				<s:GridColumn dataField="subkeys" itemRenderer="Item" headerText="subkeys"></s:GridColumn>
+				<s:GridColumn dataField="name" itemRenderer="org.flexlite.view.Item" headerText="name"></s:GridColumn>
+				<s:GridColumn dataField="url" headerText="url" itemRenderer="org.flexlite.view.Item"></s:GridColumn>
+				<s:GridColumn dataField="subkeys" itemRenderer="org.flexlite.view.Item" headerText="subkeys"></s:GridColumn>
 				<s:GridColumn width="75" dataField="size" editable="false" labelFunction="{sizeLabelFunc}" sortCompareFunction="{sizeCompareFunc}" headerText="size"></s:GridColumn>
 				<s:GridColumn width="75" dataField="language" headerText="language"></s:GridColumn>
 				<s:GridColumn width="45" dataField="type" headerText="type"></s:GridColumn>
-				<s:GridColumn width="45" editable="false" itemRenderer="DelItem" headerText=""></s:GridColumn>
+				<s:GridColumn width="45" editable="false" itemRenderer="org.flexlite.view.DelItem" headerText=""></s:GridColumn>
 			</s:ArrayList>
 		</s:columns>
 	</s:DataGrid>
@@ -1622,8 +660,8 @@
 	<s:Scroller x="0" top="31" bottom="0" width="120">
 		<s:VGroup maxWidth="120" gap="-1" horizontalAlign="center">
 			<s:List id="groupTab" x="0" y="31" width="100%" borderVisible="false" click="groupTab_changeHandler()"
-					dataProvider="{groupDp}"
-					itemRenderer="GroupItem">
+					dataProvider="{manager.groupNameData}"
+					itemRenderer="org.flexlite.view.GroupItem">
 				<s:layout>
 					<s:VerticalLayout gap="-1" horizontalAlign="justify" rowHeight="35"
 									  variableRowHeight="false"/>

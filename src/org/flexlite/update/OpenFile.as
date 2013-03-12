@@ -1,4 +1,4 @@
-package com
+package org.flexlite.update
 {
 	import flash.events.Event;
 	import flash.events.EventDispatcher;

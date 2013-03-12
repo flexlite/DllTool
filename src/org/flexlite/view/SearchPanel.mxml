@@ -7,7 +7,7 @@
 			   title="搜索">
 	<fx:Script>
 		<![CDATA[
-			import events.SearchEvent;
+			import org.flexlite.events.SearchEvent;
 			
 			import mx.collections.ArrayCollection;
 			import mx.controls.Alert;

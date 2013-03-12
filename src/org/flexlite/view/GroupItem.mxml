@@ -6,7 +6,7 @@
 				autoDrawBackground="false" rollOut="itemrenderer1_rollOutHandler(event)">
 	<fx:Script>
 		<![CDATA[
-			import events.DelEvent;
+			import org.flexlite.events.DelEvent;
 			
 			import mx.events.FlexEvent;
 			
@@ -56,7 +56,7 @@
 	<s:ButtonBarButton allowDeselection="false" id="btn" x="0" y="0" width="100%" height="100%" label="{data}"/>
 	<s:Button id="delBtn" visible="false" right="0" width="24" height="24" buttonMode="true" click="button1_clickHandler(event)" 
 			  mouseDown="button1_mouseDownHandler(event)"
-			  icon="@Embed('icon/delete.gif')" mouseChildren="false" skinClass="IconButtonSkin"
+			  icon="@Embed('/icon/delete.gif')" mouseChildren="false" skinClass="org.flexlite.view.IconButtonSkin"
 			  useHandCursor="true" verticalCenter="0"/>
 	
 </s:ItemRenderer>

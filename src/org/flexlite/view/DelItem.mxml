@@ -5,7 +5,7 @@
 	
 	<fx:Script>
 		<![CDATA[
-			import events.DelEvent;
+			import org.flexlite.events.DelEvent;
 			protected function button1_clickHandler(event:MouseEvent):void
 			{
 				var evt:DelEvent = new DelEvent(DelEvent.DELETE,true);
@@ -16,5 +16,5 @@
 		]]>
 	</fx:Script>
 	
-	<s:Button x="1" verticalCenter="0" y="0" width="24" height="24" skinClass="IconButtonSkin" icon="@Embed('icon/delete.gif')" click="button1_clickHandler(event)"/>
+	<s:Button x="1" verticalCenter="0" y="0" width="24" height="24" skinClass="org.flexlite.view.IconButtonSkin" icon="@Embed('/icon/delete.gif')" click="button1_clickHandler(event)"/>
 </s:GridItemRenderer>
