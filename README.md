@@ -7,4 +7,4 @@ Dll资源管理框架的配置文件生成工具
 
 2.编译：AIR桌面项目，Flex SDK4.6+
 
-3.库依赖:需要FlexLiteExtended库(https://github.com/flexlite/flexlite-extended) 和 libs下的SWFExplorer.swc。
+3.库依赖：需要FlexLiteExtended库(https://github.com/flexlite/flexlite-extended) 和 libs下的SWFExplorer.swc。
