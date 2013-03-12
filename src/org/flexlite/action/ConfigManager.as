@@ -209,7 +209,7 @@ package org.flexlite.action
 			delete data.nativePath;
 			if(data.type=="swf")
 			{
-				DomLoader.loadByteArray( path,function(bytes:ByteArray):void{
+				DomLoader.loadByteArray(path,function(bytes:ByteArray):void{
 					var swf:SWFExplorer = new SWFExplorer();
 					var definitions:Array = swf.parse(bytes);
 					data.subkeys = definitions.join();
@@ -231,7 +231,9 @@ package org.flexlite.action
 				nextSubkeyObject();
 			}
 		}
-		
+		/**
+		 * 从一个打包好的资源里获取subkeys。
+		 */		
 		private function getSubkeysFromGrp(path:String):String
 		{
 			var bytes:ByteArray = FileUtil.openAsByteArray(path);
@@ -351,7 +353,7 @@ package org.flexlite.action
 			var data:Object;
 			if(type=="JSON"||type=="XML")
 			{
-				DomLoader.loadText(file.nativePath,function(str:String):void{
+				DomLoader.loadText(file.url,function(str:String):void{
 					if(type=="JSON")
 					{
 						try
@@ -373,7 +375,7 @@ package org.flexlite.action
 			}
 			else
 			{
-				DomLoader.loadByteArray(file.nativePath,function(bytes:ByteArray):void{
+				DomLoader.loadByteArray(file.url,function(bytes:ByteArray):void{
 					try
 					{
 						bytes.uncompress();
@@ -965,14 +967,7 @@ package org.flexlite.action
 					var type:String = data.type;
 					if(type!="dxr"&&type!="swf"&&type!="grp")
 						continue;
-					var fileNativePath:String = file.nativePath;
-					//MacOS操作系统下，需要在前面加一个file://前缀，否则是按照app://来去寻找相对路径
-					//不确定是否兼容Windows，当测试兼容后，删除这个 if 判断
-					if (Capabilities.os.indexOf("Mac") > -1)
-					{
-						fileNativePath = "file://" + fileNativePath;
-					}
-					data.nativePath = fileNativePath;
+					data.nativePath = file.url;
 					if(subkeyList.indexOf(data)==-1)
 						subkeyList.push(data);
 				}

@@ -51,7 +51,7 @@
 				if(event.clipboard.hasFormat(ClipboardFormats.FILE_LIST_FORMAT))
 				{       
 					if(event.clipboard.hasFormat(ClipboardFormats.FILE_LIST_FORMAT))
-						DragManager.acceptDragDrop(this);    
+						DragManager.acceptDragDrop(this); 
 				}
 			}
 			/**
@@ -153,7 +153,7 @@
 				nativeWindow.title = "DllTool "+currentVersion;
 				new AirUpdate().checkUpdate();
 				var configFile:File = File.applicationDirectory.resolvePath("config/config.xml");
-				DomLoader.loadXML(configFile.nativePath,manager.parseConfig);
+				DomLoader.loadXML(configFile.url,manager.parseConfig);
 				dataGrid.addEventListener(DelEvent.DELETE,onDeleteItem);
 				groupTab.addEventListener(DelEvent.DELETE,onDeleteItem);
 
