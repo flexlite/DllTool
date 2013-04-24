@@ -625,7 +625,7 @@
 			/**
 			 * 刷新选中项
 			 */
-			protected function button2_clickHandler(event:MouseEvent=null):void
+			protected function button2_clickHandler(event:Event=null):void
 			{
 				var item:Object = dataGrid.selectedItem;
 				if(item)
