@@ -178,8 +178,18 @@ package org.flexlite.action
 				if(isAdded(group,data.url))
 					continue;
 				group.push(data);
+				if(_currentGroupName=="loading")
+					continue;
+				var type:String = data.type;
+				if(type!="dxr"&&type!="swf"&&type!="grp")
+					continue;
+				data.nativePath = file.url;
+				if(subkeyList.indexOf(data)==-1)
+					subkeyList.push(data);
 			}
-			refreshAll();
+			startTime = getTimer();
+			app.status = "正在刷新中...";
+			nextSubkeyObject();
 		}
 		/**
 		 * 分析下一个文件的subkeys
@@ -212,6 +222,7 @@ package org.flexlite.action
 				DomLoader.loadByteArray(path,function(bytes:ByteArray):void{
 					var swf:SWFExplorer = new SWFExplorer();
 					var definitions:Array = swf.parse(bytes);
+					definitions.sort();
 					data.subkeys = definitions.join();
 					nextSubkeyObject();
 				});
@@ -221,6 +232,7 @@ package org.flexlite.action
 				DomLoader.loadByteArray(path,function(bytes:ByteArray):void{
 					var file:DxrFile = new DxrFile(bytes);
 					var keyList:Vector.<String> = file.getKeyList();
+					keyList.sort(sortStrings);
 					data.subkeys = keyList.join();
 					nextSubkeyObject();
 				});
@@ -231,6 +243,23 @@ package org.flexlite.action
 				nextSubkeyObject();
 			}
 		}
+		
+		private function sortStrings(x:String, y:String):Number
+		{ 
+			if (x < y)
+			{
+				return -1;
+			}
+			else if (x > y)
+			{
+				return 1;
+			}
+			else
+			{
+				return 0;
+			}
+		}
+
 		/**
 		 * 从一个打包好的资源里获取subkeys。
 		 */		
@@ -253,6 +282,7 @@ package org.flexlite.action
 				if(item.subkeys)
 					subkeys = subkeys.concat(item.subkeys.split(","));
 			}
+			subkeys.sort();
 			return subkeys.join(",");
 		}
 		
@@ -430,7 +460,6 @@ package org.flexlite.action
 			checkKeyRepeat();
 			refreshGroupList();
 			itemListData.source = getCurrentGroup();
-			refreshAll()
 		}
 		
 		/**
@@ -939,6 +968,42 @@ package org.flexlite.action
 			itemListData.source = getCurrentGroup();
 		}
 		
+		/**
+		 * 刷新单个资源
+		 */		
+		public function refreshOne(data:Object):void
+		{
+			var url:String = resourcePath+data.url;
+			if(!exists(url))
+				url = data.url;
+			if(!exists(url))
+			{
+				data.notExists = true;
+				return;
+			}
+			if(data.notExists)
+				delete data.notExists;
+			url = escapeUrl(url);
+			var file:File = File.applicationDirectory.resolvePath(url);
+			data.size = file.size.toString();
+			if(_currentGroupName=="loading")
+				return;
+			var type:String = data.type;
+			if(type!="dxr"&&type!="swf"&&type!="grp")
+				return;
+			data.nativePath = file.url;
+			if(subkeyList.indexOf(data)==-1)
+			{
+				subkeyList.push(data);
+				if(subkeyList.length==1)
+				{
+					startTime = getTimer();
+					app.status = "正在刷新中...";
+					nextSubkeyObject();
+				}
+			}
+		}
+		
 		private var startTime:Number = 0;
 		/**
 		 * 刷新所有数据项，重新读取size，subkey。
@@ -1116,6 +1181,5 @@ package org.flexlite.action
 			FileUtil.save(exportPath+url,bytes);
 			return group;
 		}
-		
 	}
 }

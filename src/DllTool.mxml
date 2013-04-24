@@ -13,9 +13,11 @@
 			import air.update.ApplicationUpdaterUI;
 			
 			import mx.controls.Alert;
+			import mx.controls.Tree;
 			import mx.events.CloseEvent;
 			import mx.events.FlexEvent;
 			import mx.managers.DragManager;
+			import mx.managers.LayoutManager;
 			import mx.managers.PopUpManager;
 			
 			import org.flexlite.action.ConfigManager;
@@ -214,7 +216,8 @@
 				editMenu.addItem(createMenuItem("搜索资源",searchRes,"f"));
 				editMenu.addItem(createMenuItem("清除搜索",cleanSearchAndExist,"d"));
 				editMenu.addItem(new NativeMenuItem("",true));
-				editMenu.addItem(createMenuItem("刷新资源",refresBtn_clickHandler,"r"));
+				editMenu.addItem(createMenuItem("刷新所有资源",refresBtn_clickHandler,"r"));
+				editMenu.addItem(createMenuItem("刷新选中项",button2_clickHandler));
 				editMenu.addItem(createMenuItem("移除重复的DXR",removeRepeatBtn_clickHandler));
 				
 				
@@ -619,6 +622,15 @@
 				var file:File = new File(url);
 				file.openWithDefaultApplication();
 			}
+			/**
+			 * 刷新选中项
+			 */
+			protected function button2_clickHandler(event:MouseEvent=null):void
+			{
+				var item:Object = dataGrid.selectedItem;
+				if(item)
+					manager.refreshOne(item);
+			}
 			
 		]]>
 	</fx:Script>
@@ -645,7 +657,7 @@
 			  click="browseBtn_clickHandler(event)"/>
 	<s:Label x="5" y="10" text="URL相对路径:"/>
 	<s:TextInput id="srcPath" x="81" y="4" width="215" editable="false"/>
-	<s:Button id="packBtn" y="5" left="348" label="发布资源" click="button1_clickHandler(event)"
+	<s:Button id="packBtn" y="5" left="432" label="发布资源" click="button1_clickHandler(event)"
 			  toolTip="将配置和资源打包发布"/>
 	<s:DropDownList id="exportFormat" y="5" right="13" width="70" selectedIndex="0">
 		<s:ArrayCollection>
@@ -675,4 +687,5 @@
 			</s:Group>
 		</s:VGroup>
 	</s:Scroller>
+	<s:Button x="348" y="5" label="刷新选中项" click="button2_clickHandler(event)"/>
 </s:WindowedApplication>
