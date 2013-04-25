@@ -459,6 +459,25 @@ package org.flexlite.action
 			replaceSeparator(true);
 			checkKeyRepeat();
 			refreshGroupList();
+			for each(var gObj:Object in loadGroups)
+			{
+				for each(var data:Object in gObj.list)
+				{
+					var url:String = resourcePath+data.url;
+					if(!exists(url))
+						url = data.url;
+					if(!exists(url))
+					{
+						data.notExists = true;
+						continue;
+					}
+					if(data.notExists)
+						delete data.notExists;
+					url = escapeUrl(url);
+					var file:File = File.applicationDirectory.resolvePath(url);
+					data.size = file.size.toString();
+				}
+			}
 			itemListData.source = getCurrentGroup();
 		}
 		
