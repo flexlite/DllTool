@@ -183,7 +183,7 @@ package org.flexlite.action
 				var type:String = data.type;
 				if(type!="dxr"&&type!="swf"&&type!="grp")
 					continue;
-				data.nativePath = file.url;
+				data.nativePath = file.nativePath;
 				if(subkeyList.indexOf(data)==-1)
 					subkeyList.push(data);
 			}
@@ -217,25 +217,24 @@ package org.flexlite.action
 			}
 			var path:String = data.nativePath;
 			delete data.nativePath;
+			var bytes:ByteArray;
 			if(data.type=="swf")
 			{
-				DomLoader.loadByteArray(path,function(bytes:ByteArray):void{
-					var swf:SWFExplorer = new SWFExplorer();
-					var definitions:Array = swf.parse(bytes);
-					definitions.sort();
-					data.subkeys = definitions.join();
-					nextSubkeyObject();
-				});
+				bytes = FileUtil.openAsByteArray(path);
+				var swf:SWFExplorer = new SWFExplorer();
+				var definitions:Array = swf.parse(bytes);
+				definitions.sort();
+				data.subkeys = definitions.join();
+				nextSubkeyObject();
 			}
 			else if(data.type=="dxr")
 			{
-				DomLoader.loadByteArray(path,function(bytes:ByteArray):void{
-					var file:DxrFile = new DxrFile(bytes);
-					var keyList:Vector.<String> = file.getKeyList();
-					keyList.sort(sortStrings);
-					data.subkeys = keyList.join();
-					nextSubkeyObject();
-				});
+				bytes = FileUtil.openAsByteArray(path);
+				var file:DxrFile = new DxrFile(bytes);
+				var keyList:Vector.<String> = file.getKeyList();
+				keyList.sort(sortStrings);
+				data.subkeys = keyList.join();
+				nextSubkeyObject();
 			}
 			else
 			{
@@ -459,26 +458,8 @@ package org.flexlite.action
 			replaceSeparator(true);
 			checkKeyRepeat();
 			refreshGroupList();
-			for each(var gObj:Object in loadGroups)
-			{
-				for each(var data:Object in gObj.list)
-				{
-					var url:String = resourcePath+data.url;
-					if(!exists(url))
-						url = data.url;
-					if(!exists(url))
-					{
-						data.notExists = true;
-						continue;
-					}
-					if(data.notExists)
-						delete data.notExists;
-					url = escapeUrl(url);
-					var file:File = File.applicationDirectory.resolvePath(url);
-					data.size = file.size.toString();
-				}
-			}
 			itemListData.source = getCurrentGroup();
+			refreshAll();
 		}
 		
 		/**
@@ -1010,7 +991,7 @@ package org.flexlite.action
 			var type:String = data.type;
 			if(type!="dxr"&&type!="swf"&&type!="grp")
 				return;
-			data.nativePath = file.url;
+			data.nativePath = file.nativePath;
 			if(subkeyList.indexOf(data)==-1)
 			{
 				subkeyList.push(data);
@@ -1051,7 +1032,7 @@ package org.flexlite.action
 					var type:String = data.type;
 					if(type!="dxr"&&type!="swf"&&type!="grp")
 						continue;
-					data.nativePath = file.url;
+					data.nativePath = file.nativePath;
 					if(subkeyList.indexOf(data)==-1)
 						subkeyList.push(data);
 				}
