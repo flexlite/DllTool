@@ -222,9 +222,14 @@ package org.flexlite.action
 			{
 				bytes = FileUtil.openAsByteArray(path);
 				var swf:SWFExplorer = new SWFExplorer();
-				var definitions:Array = swf.parse(bytes);
-				definitions.sort();
-				data.subkeys = definitions.join();
+				try
+				{
+					var definitions:Array = swf.parse(bytes);
+					definitions.sort();
+					data.subkeys = definitions.join();
+				}
+				catch(e:Error){}
+				
 				nextSubkeyObject();
 			}
 			else if(data.type=="dxr")
@@ -304,20 +309,14 @@ package org.flexlite.action
 		 * type缓存字典，查询指定扩展名的类型
 		 */
 		private var typeDic:Dictionary = new Dictionary();
+		
+		private var _resTypes:Array = [];
 		/**
 		 * 返回资源类型列表
 		 */		
 		public function get resTypes():Array
 		{
-			var types:Array = [];
-			for each(var type:String in typeDic)
-			{
-				if(types.indexOf(type)==-1&&type!="grp")
-				{
-					types.push(type);
-				}
-			}
-			return types;
+			return _resTypes.concat();
 		}
 		/**
 		 * 解析一个文件为配置数据对象
@@ -336,6 +335,11 @@ package org.flexlite.action
 				data.type = typeDic[file.extension];
 			else
 				data.type = "bin";
+			if(_resTypes.indexOf(data.type)==-1)
+			{
+				_resTypes.push(data.type);
+				_resTypes.sort();
+			}
 			return data;
 		}
 		
@@ -489,6 +493,11 @@ package org.flexlite.action
 			for each(var type:XML in types)
 			{
 				var name:String = String(type.@name);
+				if(_resTypes.indexOf(name)==-1)
+				{
+					_resTypes.push(name);
+					_resTypes.sort();
+				}
 				var exts:Array = String(type.@extensions).split(",");
 				for each(var ext:String in exts)
 				{
@@ -1015,6 +1024,12 @@ package org.flexlite.action
 				for each(var data:Object in group.list)
 				{
 					var url:String = resourcePath+data.url;
+					var type:String = data.type;
+					if(_resTypes.indexOf(type)==-1)
+					{
+						_resTypes.push(type);
+						_resTypes.sort();
+					}
 					if(!exists(url))
 						url = data.url;
 					if(!exists(url))
@@ -1029,7 +1044,6 @@ package org.flexlite.action
 					data.size = file.size.toString();
 					if(group.name=="loading")
 						continue;
-					var type:String = data.type;
 					if(type!="dxr"&&type!="swf"&&type!="grp")
 						continue;
 					data.nativePath = file.nativePath;
@@ -1053,10 +1067,17 @@ package org.flexlite.action
 		 * @param packedGroups 要打包的组名列表
 		 * @param exculdeTypes 打包时要排除的文件类型
 		 * @param type 要导出的配置文件类型
+		 * @param generateCrc 要导出的配置文件类型
 		 */			
 		public function startPack(exportPath:String,packedConfigPath:String,compressType:Array,
-								  packedGroups:Array,exculdeTypes:Array,type:String):void
+								  packedGroups:Array,exculdeTypes:Array,type:String,generateCrc:Boolean):void
 		{
+			var oldLoadGroup:Array = loadGroups;
+			var bytes:ByteArray = new ByteArray();
+			bytes.writeObject(loadGroups);
+			bytes.position = 0;
+			loadGroups = bytes.readObject();
+			
 			this.exportPath = exportPath;
 			this.compressType = compressType;
 			this.exculdeTypes = exculdeTypes;
@@ -1067,11 +1088,30 @@ package org.flexlite.action
 					var url:String = resourcePath+data.url;
 					if(!exists(url))
 						continue;
-					var bytes:ByteArray = FileUtil.openAsByteArray(url);
+					bytes = FileUtil.openAsByteArray(url);
 					if(isCompressType(data.type))
 					{
 						bytes.compress();
 						data.size = bytes.length.toString();
+					}
+					if(generateCrc)
+					{
+						var suffix:String = CRC32Util.getCRC32(bytes).toString(36).toUpperCase();
+						var resFile:File = new File(exportPath+data.url);
+						if(resFile.exists)
+						{
+							resFile.deleteFile();
+						}
+						var ext:String = resFile.extension;
+						var name:String = FileUtil.getFileName(data.url);
+						var dir:String = FileUtil.getDirectory(data.url);
+						var index:int = name.indexOf("__");
+						if(index!=-1)
+							name = name.substr(0,index);
+						data.url = dir+name+"__"+suffix;
+						if(ext)
+							data.url += "."+ext;
+						
 					}
 					FileUtil.save(exportPath+data.url,bytes);
 				}
@@ -1079,6 +1119,8 @@ package org.flexlite.action
 			
 			var configData:* = mergeGroups(packedGroups,type);
 			FileUtil.save(packedConfigPath,configData);
+			
+			loadGroups = oldLoadGroup;
 			
 			var file:File = File.applicationDirectory.resolvePath(escapeUrl(exportPath));
 			file.openWithDefaultApplication();
@@ -1101,12 +1143,6 @@ package org.flexlite.action
 		 */
 		private function mergeGroups(groups:Array,type:String):*
 		{
-			var oldLoadGroup:Array = loadGroups;
-			var bytes:ByteArray = new ByteArray();
-			bytes.writeObject(loadGroups);
-			bytes.position = 0;
-			loadGroups = bytes.readObject();
-			
 			for each(var groupName:String in groups)
 			{
 				var group:Array = getGroupByName(groupName);
@@ -1121,7 +1157,7 @@ package org.flexlite.action
 				}
 			}
 			var data:* = getConfigData(type);
-			loadGroups = oldLoadGroup;
+			
 			return data;
 		}
 		

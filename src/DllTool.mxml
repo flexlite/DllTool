@@ -509,6 +509,7 @@
 				var packedGroups:Array = SharedObjectUtil.read(FL_DIR,"packedGroups");
 				var exculdeTypes:Array = SharedObjectUtil.read(FL_DIR,"excludeTypes");
 				var copyAll:Boolean = SharedObjectUtil.read(FL_DIR,"packedCopyAll");
+				var crcCode:Boolean = SharedObjectUtil.read(FL_DIR,"packedCrcCode");
 				if(copyAll)
 				{
 					var resList:Array = FileUtil.search(srcPath.text,null,searchfilter);
@@ -520,7 +521,7 @@
 				}
 				
 				manager.startPack(exportPath,packedConfigPath,compressType,
-					packedGroups,exculdeTypes,exportFormat.selectedItem as String);
+					packedGroups,exculdeTypes,exportFormat.selectedItem as String,crcCode);
 				
 				status = "资源已经发布到:\""+exportPath+"\"下.";
 			}

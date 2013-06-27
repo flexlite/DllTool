@@ -30,6 +30,7 @@
 				packedResPath.text = SharedObjectUtil.read(FL_DIR,"packedResPath");
 				packedConfigPath.text = SharedObjectUtil.read(FL_DIR,"packedConfigPath");
 				copyAllBtn.selected = SharedObjectUtil.read(FL_DIR,"packedCopyAll");
+				crcCodeBtn.selected = SharedObjectUtil.read(FL_DIR,"packedCrcCode");
 			}
 			
 			public function setData(groups:Array,types:Array):void
@@ -42,7 +43,7 @@
 					packedTypes = ["xml","json","txt"];
 				var excludeTypes:Array = SharedObjectUtil.read(FL_DIR,"excludeTypes");
 				if(!excludeTypes)
-					excludeTypes = ["swf","sound"];
+					excludeTypes = ["sound"];
 				groupDp.removeAll();
 				for each(var name:String in groups)
 				{
@@ -102,6 +103,7 @@
 				SharedObjectUtil.write(FL_DIR,"packedResPath",packedResPath.text);
 				SharedObjectUtil.write(FL_DIR,"packedConfigPath",packedConfigPath.text);
 				SharedObjectUtil.write(FL_DIR,"packedCopyAll",copyAllBtn.selected);
+				SharedObjectUtil.write(FL_DIR,"packedCrcCode",crcCodeBtn.selected);
 				PopUpManager.removePopUp(this);
 				dispatchEvent(new Event("startPack"));
 			}
@@ -138,6 +140,8 @@
 	<s:Label x="10" y="35" text="资源发布路径:"/>
 	<s:CheckBox id="copyAllBtn" x="93" y="54" label="复制所有资源" selected="true"
 				toolTip="从源目录复制所有文件到发布路径，即使该文件不在配置中"/>
+	<s:CheckBox id="crcCodeBtn" x="193" y="54" label="添加CRC32效验码" selected="true"
+				toolTip="为配置中的资源文件生成唯一的CRC32效验码，追加到文件名末尾"/>
 	<s:List x="174" y="136" width="120" height="105" borderVisible="true" dataProvider="{groupDp}"
 			itemRenderer="org.flexlite.view.PackItem" textAlign="left"></s:List>
 	<s:List x="42" y="136" width="120" height="105" borderVisible="true" dataProvider="{typeDp}"
